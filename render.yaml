@@ -3,7 +3,7 @@ services:
     name: gym-management-system
     runtime: node
     repo: https://github.com/lordshiva09/GYM-MANAGEMENT-SYSTEM
-    branch: master
+    branch: main
     plan: free
     buildCommand: cd server && npm install
     startCommand: cd server && node server.js

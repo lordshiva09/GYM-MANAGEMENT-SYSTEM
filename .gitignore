@@ -1,0 +1,8 @@
+node_modules/
+.env
+server/node_modules/
+server/.env
+server/sent-alerts.json
+server/.wwebjs_auth/
+*.log
+.DS_Store

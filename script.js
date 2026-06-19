@@ -6,6 +6,8 @@ let members = [];
 let payments = [];
 let gymSettings = null;
 let apiAvailable = true;
+let currentAlerts = [];
+let activeFilter = 'All';
 
 function doLogin(id, pass) {
   const savedId = localStorage.getItem('rsgym_admin_id') || DEFAULT_ADMIN_ID;
@@ -226,6 +228,20 @@ document.querySelectorAll('#dashboard .stat-card').forEach(card => {
         return { ...m, totalPaid };
       });
       showMemberListModal('All Members', list);
+    } else if (label === 'Expired Members') {
+      const list = members.filter(m => {
+        const m2 = minutesUntilExpiry(m.expiryDate);
+        return m2 <= 0;
+      }).map(m => {
+        const memberPayments = payments.filter(p => p.member === m.name);
+        const totalPaid = memberPayments.reduce((s, p) => p.status === 'Paid' ? s + p.amount : s, 0);
+        return { ...m, totalPaid };
+      });
+      if (list.length === 0) {
+        showToast('No expired members', 'info');
+        return;
+      }
+      showMemberListModal('Expired Members', list);
     } else if (label === 'New Members') {
       const threeDaysAgo = new Date();
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
@@ -647,20 +663,38 @@ function checkExpiryNotifications() {
   return expiryAlerts;
 }
 
-function updateNotificationCenter(alerts) {
+function renderNotifications() {
   const notifList = document.querySelector('.notifications-list');
   if (!notifList) return;
   notifList.innerHTML = '';
-  if (alerts.length === 0) return;
-  alerts.forEach(alert => {
+  let filtered = currentAlerts;
+  if (activeFilter === 'Expiry Alerts') {
+    filtered = currentAlerts.filter(a => a.type === 'expired' || a.type === '2day' || a.type === '1day');
+  } else if (activeFilter === 'Payment Due') {
+    filtered = currentAlerts.filter(a => a.type === 'payment');
+  } else if (activeFilter === 'New Members') {
+    filtered = currentAlerts.filter(a => a.type === 'newmember');
+  } else if (activeFilter === 'System') {
+    filtered = currentAlerts.filter(a => a.type === 'system');
+  }
+  if (filtered.length === 0) {
+    notifList.innerHTML = `<div class="notif-item info">
+      <div class="notif-icon"><i class="fas fa-bell"></i></div>
+      <div class="notif-content">
+        <h4>No Notifications</h4>
+        <p>All caught up! You have no pending notifications.</p>
+        <span class="notif-time"><i class="far fa-clock"></i> Current</span>
+      </div>
+    </div>`;
+    return;
+  }
+  filtered.forEach(alert => {
     const itemType = alert.type === 'expired' ? 'critical' : 'warning';
     const icon = alert.type === 'expired' ? 'fa-times-circle' : 'fa-clock';
     const title = alert.type === 'expired' ? 'Membership Expired' : `Expiring in ${alert.minutesLeft} Minutes`;
     const desc = alert.type === 'expired'
       ? `<strong>${alert.member.name}</strong> � ${alert.member.plan} plan has expired`
       : `<strong>${alert.member.name}</strong> � ${alert.member.plan} plan expires in <strong>${alert.minutesLeft} minutes</strong>`;
-    const placeholder = notifList.querySelector('.notif-item.info .fa-bell');
-    if (placeholder) notifList.innerHTML = '';
     const div = document.createElement('div');
     div.className = `notif-item ${itemType}`;
     div.innerHTML = `
@@ -676,22 +710,23 @@ function updateNotificationCenter(alerts) {
   });
 }
 
+function updateNotificationCenter(alerts) {
+  currentAlerts = alerts;
+  renderNotifications();
+}
+
 function updateExpiryDashboard() {
   const expiringList = document.querySelector('.expiring-list');
   if (!expiringList) return;
-  const expiring = members.filter(m => {
-    const m2 = minutesUntilExpiry(m.expiryDate);
-    return m2 > 0 && m2 <= 2880;
-  });
   const expired = members.filter(m => {
     const m2 = minutesUntilExpiry(m.expiryDate);
-    return m2 <= 0 && m2 > -1440;
+    return m2 <= 0;
   });
-  if (expiring.length === 0 && expired.length === 0) {
+  if (expired.length === 0) {
     expiringList.innerHTML = `<div class="expiring-item">
       <div class="expiring-avatar">--</div>
       <div class="expiring-info">
-        <strong>No members expiring</strong>
+        <strong>No members expired</strong>
         <span>All memberships are up to date</span>
       </div>
       <span class="expiring-status normal">Clear</span>
@@ -699,19 +734,6 @@ function updateExpiryDashboard() {
     return;
   }
   let html = '';
-  expiring.forEach(m => {
-    const m2 = minutesUntilExpiry(m.expiryDate);
-    const initials = m.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const statusClass = m2 <= 1440 ? 'critical' : m2 <= 2160 ? 'warning' : 'normal';
-    html += `<div class="expiring-item">
-      <div class="expiring-avatar">${initials}</div>
-      <div class="expiring-info">
-        <strong>${m.name}</strong>
-        <span>${m.plan} � Expires in ${daysLeft(m2)}</span>
-      </div>
-      <a href="${getWhatsAppLink(m.mobile, `Dear ${m.name}, your ${m.plan} plan is expiring in ${m2} minutes. Please renew! - RS MULTI GYM`)}" target="_blank" class="expiring-status ${statusClass}" style="text-decoration:none;"><i class="fab fa-whatsapp"></i> Alert</a>
-    </div>`;
-  });
   expired.forEach(m => {
     const initials = m.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     html += `<div class="expiring-item">
@@ -725,7 +747,7 @@ function updateExpiryDashboard() {
   });
   expiringList.innerHTML = html;
   const expiringStat = document.querySelector('.stat-card.warning-border .stat-value');
-  if (expiringStat) expiringStat.textContent = expiring.length;
+  if (expiringStat) expiringStat.textContent = expired.length;
 }
 
 async function fixOldMembers() {
@@ -853,10 +875,29 @@ if (searchInput) {
   });
 }
 
+// ===== NOTIFICATION FILTERS =====
+document.querySelectorAll('.notif-filter').forEach(f => {
+  f.addEventListener('click', function () {
+    document.querySelectorAll('.notif-filter').forEach(el => el.classList.remove('active'));
+    this.classList.add('active');
+    activeFilter = this.textContent.trim();
+    renderNotifications();
+  });
+});
+
+// ===== NOTIFICATION BELL CLICK =====
+document.querySelectorAll('.notification-icon').forEach(icon => {
+  icon.addEventListener('click', function () {
+    window.location.hash = '#notifications';
+    checkExpiryNotifications();
+  });
+});
+
 // ===== NOTIFICATION MARK ALL READ =====
 const markAllBtn = document.querySelector('.btn-outline .fa-check-double');
 if (markAllBtn) {
   markAllBtn.closest('button')?.addEventListener('click', function () {
+    currentAlerts = [];
     const list = document.querySelector('.notifications-list');
     if (list) {
       list.innerHTML = `<div class="notif-item info">

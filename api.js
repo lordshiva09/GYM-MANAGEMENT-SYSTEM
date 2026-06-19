@@ -1,5 +1,5 @@
 const API = {
-  base: window.location.port === '3001' ? '' : 'http://localhost:3001',
+  base: window.location.hostname === 'localhost' && window.location.port !== '3001' ? 'http://localhost:3001' : '',
 
   async request(method, url, body) {
     const opts = {

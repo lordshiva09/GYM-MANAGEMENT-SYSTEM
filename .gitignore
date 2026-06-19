@@ -4,5 +4,6 @@ server/node_modules/
 server/.env
 server/sent-alerts.json
 server/.wwebjs_auth/
+server/.wwebjs_cache/
 *.log
 .DS_Store

@@ -34,42 +34,53 @@ function saveSentAlerts() {
   fs.writeFileSync(SENT_ALERTS_FILE, JSON.stringify(sentAlerts, null, 2));
 }
 
-const client = new Client({
-  authStrategy: new LocalAuth({ clientId: 'rsgym-bot' }),
-  puppeteer: {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
-});
-
 let waReady = false;
 let waQR = null;
+let waClient = null;
 
-client.on('qr', (qr) => {
-  waQR = qr;
-  qrcode.generate(qr, { small: true });
-  console.log('\n[!] SCAN THE QR CODE ABOVE WITH WHATSAPP WEB\n');
-});
+// Only initialize WhatsApp if not on Render (no display/chromium issues)
+if (!process.env.RENDER && !process.env.DISABLE_WHATSAPP) {
+  try {
+    const { Client, LocalAuth } = require('whatsapp-web.js');
+    waClient = new Client({
+      authStrategy: new LocalAuth({ clientId: 'rsgym-bot' }),
+      puppeteer: {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      }
+    });
 
-client.on('ready', () => {
-  waReady = true;
-  waQR = null;
-  console.log('[+] WhatsApp client is ready!');
-});
+    waClient.on('qr', (qr) => {
+      waQR = qr;
+      qrcode.generate(qr, { small: true });
+      console.log('\n[!] SCAN THE QR CODE ABOVE WITH WHATSAPP WEB\n');
+    });
 
-client.on('disconnected', (reason) => {
-  waReady = false;
-  console.log('[-] WhatsApp disconnected:', reason);
-});
+    waClient.on('ready', () => {
+      waReady = true;
+      waQR = null;
+      console.log('[+] WhatsApp client is ready!');
+    });
 
-client.on('auth_failure', (msg) => {
-  waReady = false;
-  console.log('[-] Auth failure:', msg);
-});
+    waClient.on('disconnected', (reason) => {
+      waReady = false;
+      console.log('[-] WhatsApp disconnected:', reason);
+    });
 
-client.initialize().catch(err => {
-  console.error('[-] Failed to initialize WhatsApp:', err.message);
-});
+    waClient.on('auth_failure', (msg) => {
+      waReady = false;
+      console.log('[-] Auth failure:', msg);
+    });
+
+    waClient.initialize().catch(err => {
+      console.error('[-] Failed to initialize WhatsApp:', err.message);
+    });
+  } catch (err) {
+    console.error('[-] WhatsApp not available:', err.message);
+  }
+} else {
+  console.log('[!] WhatsApp disabled (running on Render or DISABLE_WHATSAPP set)');
+}
 
 // ===== HELPERS =====
 function parseDate(dateStr) {
@@ -112,7 +123,7 @@ async function sendWhatsApp(mobile, message) {
   }
   try {
     const phone = formatPhone(mobile);
-    await client.sendMessage(phone, message);
+    await waClient.sendMessage(phone, message);
     console.log('[+] Sent to', mobile, ':', message.substring(0, 50) + '...');
     return true;
   } catch (err) {

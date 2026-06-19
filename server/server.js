@@ -218,10 +218,7 @@ app.post('/api/send-now', async (req, res) => {
 
 // ===== AUTO WHATSAPP ALERT CHECKER =====
 async function checkAndSendAlerts() {
-  if (!waReady) {
-    console.log('[!] Auto-check: WhatsApp not ready, skipping');
-    return;
-  }
+  if (!waReady) return;
   try {
     const allMembers = await Member.find({});
     const today = new Date();
@@ -231,32 +228,20 @@ async function checkAndSendAlerts() {
     for (const member of allMembers) {
       if (!member.expiryDate) continue;
       const minsLeft = minutesUntilExpiry(member.expiryDate);
-      if (minsLeft <= -1440) continue; // skip expired > 1 day ago
+      if (minsLeft <= -1440) continue;
 
       let alertType = null;
       let message = null;
 
-      // Real thresholds (days)
       if (minsLeft <= 2880 && minsLeft > 1440) {
         alertType = '2day';
         message = `Dear ${member.name}, your ${member.plan} plan expires in 2 days. Please renew soon! - RS MULTI GYM`;
-      } else if (minsLeft <= 1440 && minsLeft > 5) {
+      } else if (minsLeft <= 1440 && minsLeft > 0) {
         alertType = '1day';
         message = `Dear ${member.name}, your ${member.plan} plan expires in 1 day. Renew now to avoid interruption! - RS MULTI GYM`;
-      }
-      // Test thresholds (minutes) — for members with short expiry
-      else if (minsLeft <= 5 && minsLeft > 3) {
-        alertType = '5min';
-        message = `🔔 ${member.name}, your ${member.plan} plan expires in 5 minutes! - RS MULTI GYM`;
-      } else if (minsLeft <= 3 && minsLeft > 1) {
-        alertType = '3min';
-        message = `⚠️ ${member.name}, your ${member.plan} plan expires in 3 minutes! Hurry up! - RS MULTI GYM`;
-      } else if (minsLeft <= 1 && minsLeft > 0) {
-        alertType = '1min';
-        message = `🚨 ${member.name}, your ${member.plan} plan expires in 1 minute! - RS MULTI GYM`;
       } else if (minsLeft <= 0 && minsLeft > -1440) {
         alertType = 'expired';
-        message = `❌ ${member.name}, your ${member.plan} plan has expired. Please renew! - RS MULTI GYM`;
+        message = `Dear ${member.name}, your ${member.plan} plan has expired. Please renew your membership to continue. - RS MULTI GYM`;
       }
 
       if (!alertType || !message) continue;
@@ -277,15 +262,14 @@ async function checkAndSendAlerts() {
         sent++;
       }
     }
-    if (sent > 0) console.log(`[+] Auto-check: ${sent} WhatsApp alert(s) sent`);
+    if (sent > 0) console.log(`[+] Auto-check: ${sent} alert(s) sent`);
   } catch (err) {
     console.error('[-] Auto-check error:', err.message);
   }
 }
 
-// Check every 30 seconds (fast for testing minute-based alerts)
-setInterval(checkAndSendAlerts, 30 * 1000);
-// Run once after server starts (give WhatsApp 20s to init)
+// Check every 30 minutes
+setInterval(checkAndSendAlerts, 30 * 60 * 1000);
 setTimeout(checkAndSendAlerts, 20 * 1000);
 
 // ===== TEST ALERT ENDPOINT =====

@@ -216,6 +216,111 @@ app.post('/api/send-now', async (req, res) => {
   res.json({ success, member: member.name, mobile: member.mobile });
 });
 
+// ===== AUTO WHATSAPP ALERT CHECKER =====
+async function checkAndSendAlerts() {
+  if (!waReady) {
+    console.log('[!] Auto-check: WhatsApp not ready, skipping');
+    return;
+  }
+  try {
+    const allMembers = await Member.find({});
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+    let sent = 0;
+
+    for (const member of allMembers) {
+      if (!member.expiryDate) continue;
+      const minsLeft = minutesUntilExpiry(member.expiryDate);
+      if (minsLeft <= -1440) continue; // skip expired > 1 day ago
+
+      let alertType = null;
+      let message = null;
+
+      // Real thresholds (days)
+      if (minsLeft <= 2880 && minsLeft > 1440) {
+        alertType = '2day';
+        message = `Dear ${member.name}, your ${member.plan} plan expires in 2 days. Please renew soon! - RS MULTI GYM`;
+      } else if (minsLeft <= 1440 && minsLeft > 5) {
+        alertType = '1day';
+        message = `Dear ${member.name}, your ${member.plan} plan expires in 1 day. Renew now to avoid interruption! - RS MULTI GYM`;
+      }
+      // Test thresholds (minutes) — for members with short expiry
+      else if (minsLeft <= 5 && minsLeft > 3) {
+        alertType = '5min';
+        message = `🔔 ${member.name}, your ${member.plan} plan expires in 5 minutes! - RS MULTI GYM`;
+      } else if (minsLeft <= 3 && minsLeft > 1) {
+        alertType = '3min';
+        message = `⚠️ ${member.name}, your ${member.plan} plan expires in 3 minutes! Hurry up! - RS MULTI GYM`;
+      } else if (minsLeft <= 1 && minsLeft > 0) {
+        alertType = '1min';
+        message = `🚨 ${member.name}, your ${member.plan} plan expires in 1 minute! - RS MULTI GYM`;
+      } else if (minsLeft <= 0 && minsLeft > -1440) {
+        alertType = 'expired';
+        message = `❌ ${member.name}, your ${member.plan} plan has expired. Please renew! - RS MULTI GYM`;
+      }
+
+      if (!alertType || !message) continue;
+
+      const alertKey = `${member.memberId}_${todayKey}_${alertType}`;
+      if (sentAlerts[alertKey]) continue;
+
+      const ok = await sendWhatsApp(member.mobile, message);
+      if (ok) {
+        sentAlerts[alertKey] = {
+          sentAt: new Date().toISOString(),
+          member: member.name,
+          mobile: member.mobile,
+          alertType,
+          plan: member.plan
+        };
+        saveSentAlerts();
+        sent++;
+      }
+    }
+    if (sent > 0) console.log(`[+] Auto-check: ${sent} WhatsApp alert(s) sent`);
+  } catch (err) {
+    console.error('[-] Auto-check error:', err.message);
+  }
+}
+
+// Check every 30 seconds (fast for testing minute-based alerts)
+setInterval(checkAndSendAlerts, 30 * 1000);
+// Run once after server starts (give WhatsApp 20s to init)
+setTimeout(checkAndSendAlerts, 20 * 1000);
+
+// ===== TEST ALERT ENDPOINT =====
+app.post('/api/create-test', async (req, res) => {
+  const { mobile, name } = req.body;
+  if (!mobile || !name) return res.json({ success: false, error: 'Name and mobile required' });
+
+  // Create a member that expires in 5 minutes
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 5);
+  const expiryStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const joinStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const member = new Member({
+    memberId: 'TEST-' + Date.now(),
+    name,
+    mobile,
+    plan: 'Test Plan',
+    timing: 'Morning',
+    status: 'Active',
+    joinDate: joinStr,
+    expiryDate: expiryStr
+  });
+
+  try {
+    await member.save();
+    // Send immediate test message
+    const testMsg = `🧪 Test alert: ${name}, your test membership will expire in 5 minutes! - RS MULTI GYM`;
+    const sent = await sendWhatsApp(mobile, testMsg);
+    res.json({ success: true, member, testMessageSent: sent });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // Serve frontend files
 app.use(express.static(path.join(__dirname, '..')));
 app.use(express.static(path.join(__dirname, 'public')));

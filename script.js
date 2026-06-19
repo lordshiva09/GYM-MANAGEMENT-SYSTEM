@@ -1021,6 +1021,26 @@ function testWhatsApp() {
   window.open(link, '_blank');
 }
 
+async function createTestMember() {
+  const name = prompt('Test member name:', 'TEST-USER');
+  if (!name) return;
+  const mobile = prompt('Mobile number (with 10 digits):', '9341862473');
+  if (!mobile) return;
+  try {
+    const result = await API.post('/api/create-test', { name, mobile });
+    if (result.success) {
+      showToast(`🧪 Test member "${name}" created — expires in 5 minutes! WhatsApp alert bheja? ${result.testMessageSent ? '✅ Haan' : '❌ Nahi (WhatsApp disconnected)'}`, result.testMessageSent ? 'success' : 'warning');
+      if (result.testMessageSent) {
+        showToast('📱 WhatsApp pe message check karo!', 'success');
+      }
+    } else {
+      showToast('Error: ' + (result.error || 'Unknown'), 'error');
+    }
+  } catch (e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
 // ===== PAYMENTS SYSTEM =====
 const payModal = document.getElementById('paymentModal');
 const payAddBtn = document.getElementById('addPaymentBtn');

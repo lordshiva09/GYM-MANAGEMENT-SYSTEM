@@ -1,6 +1,6 @@
 // ===== ADMIN LOGIN =====
-const DEFAULT_ADMIN_ID = 'admin';
-const DEFAULT_ADMIN_PASS = 'admin123';
+const DEFAULT_ADMIN_ID = 'multigym';
+const DEFAULT_ADMIN_PASS = '500';
 
 let members = [];
 let payments = [];

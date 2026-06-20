@@ -1896,6 +1896,7 @@ tr.selected-row {
     transform: translateX(-100%);
     width: 260px;
     z-index: 200;
+    background: #0e0e1a;
   }
 
   .hamburger { display: block; }
@@ -1911,18 +1912,24 @@ tr.selected-row {
   .profile-info { display: none; }
   .topbar-search { max-width: none; }
 
-  /* Mobile sidebar toggle using checkbox hack */
-  .mobile-toggle-input:checked ~ .app .sidebar {
-    transform: translateX(0);
-  }
-
   /* Overlay when sidebar is open */
-  .mobile-toggle-input:checked ~ .app::before {
-    content: '';
+  .mobile-overlay {
+    display: none;
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
     z-index: 150;
+  }
+  .mobile-overlay.active {
+    display: block;
+  }
+
+  /* Mobile sidebar toggle using checkbox hack */
+  .mobile-toggle-input:checked ~ .app .sidebar {
+    transform: translateX(0);
+  }
+  .mobile-toggle-input:checked ~ .app .mobile-overlay {
+    display: block;
   }
 
   .content-area {

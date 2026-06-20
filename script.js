@@ -190,6 +190,14 @@ function showServerBanner() {
   checkExpiryNotifications();
   setCurrentDate();
   updateRevenueChart();
+
+  // Close mobile sidebar on link click
+  document.querySelectorAll('.sidebar .nav-links a').forEach(link => {
+    link.addEventListener('click', () => {
+      document.getElementById('mobile-toggle').checked = false;
+    });
+  });
+
   if (window.location.hash === '#renew-members') {
     renderRenewalHistory();
   }

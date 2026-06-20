@@ -27,6 +27,11 @@ function enterApp() {
   scheduleSessionReset();
 }
 
+function logout() {
+  localStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+
 function scheduleSessionReset() {
   setTimeout(() => {
     localStorage.removeItem(SESSION_KEY);

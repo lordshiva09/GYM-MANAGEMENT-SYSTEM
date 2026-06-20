@@ -186,6 +186,22 @@ input, textarea, select, button { font-family: inherit; font-size: inherit; outl
 .sidebar-footer {
   padding: 12px 14px 18px;
 }
+.logout-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  transition: all var(--transition);
+}
+.logout-area:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
 
 .upgrade-card {
   background: linear-gradient(135deg, rgba(77,166,255,0.08), rgba(77,166,255,0.02));

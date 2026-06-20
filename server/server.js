@@ -4,8 +4,8 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, makeInMemoryStore, DisconnectReason } = require('@whiskeysockets/baileys');
+const QR = require('qrcode');
 
 const Member = require('./models/Member');
 const Payment = require('./models/Payment');
@@ -22,7 +22,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const MEMBERS_FILE = path.join(__dirname, 'members.json');
 const SENT_ALERTS_FILE = path.join(__dirname, 'sent-alerts.json');
 
-// ===== WHATSAPP CLIENT =====
+// ===== WHATSAPP CLIENT (Baileys) =====
 let sentAlerts = {};
 try {
   if (fs.existsSync(SENT_ALERTS_FILE)) {
@@ -36,51 +36,64 @@ function saveSentAlerts() {
 
 let waReady = false;
 let waQR = null;
-let waClient = null;
+let waSock = null;
+const WA_AUTH_DIR = path.join(__dirname, 'wa_auth_info');
 
-// Only initialize WhatsApp if not on Render (no display/chromium issues)
-if (!process.env.RENDER && !process.env.DISABLE_WHATSAPP) {
+async function initWhatsApp() {
   try {
-    const { Client, LocalAuth } = require('whatsapp-web.js');
-    waClient = new Client({
-      authStrategy: new LocalAuth({ clientId: 'rsgym-bot' }),
-      puppeteer: {
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    const { state, saveCreds } = await useMultiFileAuthState(WA_AUTH_DIR);
+    const { version } = await fetchLatestBaileysVersion();
+
+    waSock = makeWASocket({
+      version,
+      auth: state,
+      printQRInTerminal: true,
+      syncFullHistory: false,
+      browser: ['RS MULTI GYM', 'Chrome', '1.0.0'],
+      markOnlineOnConnect: false,
+      connectTimeoutMs: 60000
+    });
+
+    waSock.ev.on('creds.update', saveCreds);
+
+    waSock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
+      if (qr) {
+        waQR = qr;
+        waReady = false;
+        try {
+          waQRDataURL = await QR.toDataURL(qr, { width: 300, margin: 2 });
+        } catch (e) {
+          waQRDataURL = null;
+        }
+        console.log('[!] New QR code generated — scan with WhatsApp');
+      }
+      if (connection === 'open') {
+        waReady = true;
+        waQR = null;
+        waQRDataURL = null;
+        console.log('[+] WhatsApp client is ready!');
+      }
+      if (connection === 'close') {
+        waReady = false;
+        const reason = lastDisconnect?.error?.output?.statusCode;
+        console.log(`[-] WhatsApp disconnected (reason: ${reason}), reconnecting...`);
+        setTimeout(initWhatsApp, 5000);
       }
     });
 
-    waClient.on('qr', (qr) => {
-      waQR = qr;
-      qrcode.generate(qr, { small: true });
-      console.log('\n[!] SCAN THE QR CODE ABOVE WITH WHATSAPP WEB\n');
-    });
+    waSock.ev.on('messages.upsert', () => {});
 
-    waClient.on('ready', () => {
-      waReady = true;
-      waQR = null;
-      console.log('[+] WhatsApp client is ready!');
-    });
-
-    waClient.on('disconnected', (reason) => {
-      waReady = false;
-      console.log('[-] WhatsApp disconnected:', reason);
-    });
-
-    waClient.on('auth_failure', (msg) => {
-      waReady = false;
-      console.log('[-] Auth failure:', msg);
-    });
-
-    waClient.initialize().catch(err => {
-      console.error('[-] Failed to initialize WhatsApp:', err.message);
-    });
+    console.log('[+] WhatsApp client initializing (Baileys)...');
   } catch (err) {
-    console.error('[-] WhatsApp not available:', err.message);
+    console.error('[-] WhatsApp initialization error:', err.message);
+    console.log('[!] Retrying in 10 seconds...');
+    setTimeout(initWhatsApp, 10000);
   }
-} else {
-  console.log('[!] WhatsApp disabled (running on Render or DISABLE_WHATSAPP set)');
 }
+
+// Start WhatsApp
+let waQRDataURL = null;
+initWhatsApp();
 
 // ===== HELPERS =====
 function parseDate(dateStr) {
@@ -117,13 +130,13 @@ function formatPhone(mobile) {
 }
 
 async function sendWhatsApp(mobile, message) {
-  if (!waReady) {
+  if (!waReady || !waSock) {
     console.log('[-] WhatsApp not ready, cannot send to', mobile);
     return false;
   }
   try {
     const phone = formatPhone(mobile);
-    await waClient.sendMessage(phone, message);
+    await waSock.sendMessage(phone, { text: message });
     console.log('[+] Sent to', mobile, ':', message.substring(0, 50) + '...');
     return true;
   } catch (err) {
@@ -190,6 +203,7 @@ app.get('/api/status', (req, res) => {
   res.json({
     waReady,
     waQR,
+    qrDataURL: waQRDataURL,
     alertsSentToday: Object.values(alertCounts).reduce((a, b) => a + b, 0),
     alertCounts,
     lastCheck: new Date().toISOString()
@@ -198,7 +212,7 @@ app.get('/api/status', (req, res) => {
 
 // QR endpoint
 app.get('/api/qr', (req, res) => {
-  res.json({ qr: waQR, waReady });
+  res.json({ qr: waQR, waReady, qrDataURL: waQRDataURL });
 });
 
 // Send WhatsApp manually

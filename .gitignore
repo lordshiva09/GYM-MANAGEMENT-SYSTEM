@@ -3,7 +3,7 @@ node_modules/
 server/node_modules/
 server/.env
 server/sent-alerts.json
-server/.wwebjs_auth/
-server/.wwebjs_cache/
+server/ngrok.exe
+server/wa_auth_info/
 *.log
 .DS_Store

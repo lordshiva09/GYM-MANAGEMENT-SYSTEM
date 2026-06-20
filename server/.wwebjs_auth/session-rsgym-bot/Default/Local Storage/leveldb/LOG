@@ -1,0 +1,15 @@
+2026/06/20-16:20:44.597 49dc Reusing MANIFEST C:\Users\Pawan kumar\OneDrive\Desktop\GYMManagmentSystem\server\.wwebjs_auth\session-rsgym-bot\Default\Local Storage\leveldb/MANIFEST-000001
+2026/06/20-16:20:44.605 49dc Recovering log #17
+2026/06/20-16:20:44.612 49dc Reusing old log C:\Users\Pawan kumar\OneDrive\Desktop\GYMManagmentSystem\server\.wwebjs_auth\session-rsgym-bot\Default\Local Storage\leveldb/000017.log 
+2026/06/20-16:50:52.333 4e88 Level-0 table #20: started
+2026/06/20-16:50:52.338 4e88 Level-0 table #20: 14633 bytes OK
+2026/06/20-16:50:52.340 4e88 Delete type=0 #17
+2026/06/20-16:50:52.343 4e88 Compacting 4@0 + 1@1 files
+2026/06/20-16:50:52.348 4e88 Generated table #21@0: 132 keys, 8117 bytes
+2026/06/20-16:50:52.348 4e88 Compacted 4@0 + 1@1 files => 8117 bytes
+2026/06/20-16:50:52.349 4e88 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/06/20-16:50:52.350 4e88 Delete type=2 #8
+2026/06/20-16:50:52.350 4e88 Delete type=2 #11
+2026/06/20-16:50:52.350 4e88 Delete type=2 #14
+2026/06/20-16:50:52.350 4e88 Delete type=2 #16
+2026/06/20-16:50:52.350 4e88 Delete type=2 #20

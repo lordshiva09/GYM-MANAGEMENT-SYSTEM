@@ -403,6 +403,7 @@ input, textarea, select, button { font-family: inherit; font-size: inherit; outl
 
 /* If any page is targeted, hide #dashboard */
 body:has(#members:target) #dashboard,
+body:has(#renew-members:target) #dashboard,
 body:has(#membership:target) #dashboard,
 body:has(#attendance:target) #dashboard,
 body:has(#payments:target) #dashboard,
@@ -2007,6 +2008,7 @@ tr.selected-row {
 
 body:has(#dashboard:target) .nav-item[href="#dashboard"],
 body:has(#members:target) .nav-item[href="#members"],
+body:has(#renew-members:target) .nav-item[href="#renew-members"],
 body:has(#trainers:target) .nav-item[href="#trainers"],
 body:has(#notifications:target) .nav-item[href="#notifications"],
 body:has(#settings:target) .nav-item[href="#settings"] {
@@ -2017,6 +2019,7 @@ body:has(#settings:target) .nav-item[href="#settings"] {
 
 body:has(#dashboard:target) .nav-item[href="#dashboard"]::before,
 body:has(#members:target) .nav-item[href="#members"]::before,
+body:has(#renew-members:target) .nav-item[href="#renew-members"]::before,
 body:has(#trainers:target) .nav-item[href="#trainers"]::before,
 body:has(#notifications:target) .nav-item[href="#notifications"]::before,
 body:has(#settings:target) .nav-item[href="#settings"]::before {
@@ -2413,6 +2416,14 @@ body:not(:has(.page:target)) .nav-item[href="#dashboard"]::before {
 .wa-status.disconnected {
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.wa-status .wa-qr-area {
+  width: 100%;
+  flex-shrink: 0;
+}
+.sidebar-footer {
+  overflow-y: auto;
+  max-height: 280px;
 }
 
 /* ===== Member Action Menu (Dropdown) ===== */

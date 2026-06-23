@@ -753,39 +753,45 @@ async function renewMember(id) {
   const expiryStr = formatDate(newExpiry);
   try {
     const result = await API.updateMember(id, { expiryDate: expiryStr, status: 'Active' });
-    if (result.success) {
-      m.expiryDate = expiryStr;
-      m.status = 'Active';
-      const amount = Number(prompt(`Enter renewal amount for ${m.name}:`, '500')) || 500;
-      if (amount > 0) {
-        const payment = {
-          txnId: generateTxnId(),
-          member: m.name,
-          amount,
-          method: 'Cash',
-          plan: m.plan,
-          type: 'Renewal',
-          status: 'Paid',
-          date: payDate(),
-          timestamp: Date.now()
-        };
-        const payResult = await API.createPayment(payment);
-        if (payResult.success) {
-          payments.unshift(payResult.payment);
-          renderPayments();
-          updatePaymentStats();
-        }
-      }
-      renderTable();
-      updateStats();
-      updateFooter();
-      renderRenewalHistory();
-      showToast(`<strong>${m.name}</strong> renewed successfully! New expiry: ${expiryStr}`, 'success');
-    } else {
+    if (!result.success) {
       showToast('Failed to renew: ' + (result.error || 'Unknown error'), 'error');
+      return;
+    }
+    m.expiryDate = expiryStr;
+    m.status = 'Active';
+    renderTable();
+    updateStats();
+    updateFooter();
+    renderRenewalHistory();
+    showToast(`<strong>${m.name}</strong> renewed successfully! New expiry: ${expiryStr}`, 'success');
+  } catch (e) {
+    showToast('Failed to update member expiry: ' + e.message, 'error');
+    return;
+  }
+  const amount = Number(prompt(`Enter renewal amount for ${m.name}:`, '500')) || 500;
+  if (amount <= 0) return;
+  try {
+    const payment = {
+      txnId: generateTxnId(),
+      member: m.name,
+      amount,
+      method: 'Cash',
+      plan: m.plan,
+      type: 'Renewal',
+      status: 'Paid',
+      date: payDate(),
+      timestamp: Date.now()
+    };
+    const payResult = await API.createPayment(payment);
+    if (payResult.success) {
+      payments.unshift(payResult.payment);
+      renderPayments();
+      updatePaymentStats();
+    } else {
+      showToast('Payment recording failed: ' + (payResult.error || 'Unknown error'), 'error');
     }
   } catch (e) {
-    showToast('Failed to renew member: ' + e.message, 'error');
+    showToast('Failed to record payment: ' + e.message, 'error');
   }
 }
 
@@ -1174,38 +1180,46 @@ form.addEventListener('submit', async (e) => {
 
   try {
     const result = await API.createMember(member);
-    if (result.success) {
-      members.push(result.member);
-      if (amount > 0) {
-        const payment = {
-          txnId: generateTxnId(),
-          member: member.name,
-          amount,
-          method: 'Cash',
-          plan: member.plan,
-          type: 'New Registration',
-          status: 'Paid',
-          date: payDate(),
-          timestamp: Date.now()
-        };
-        const payResult = await API.createPayment(payment);
-        if (payResult.success) {
-          payments.unshift(payResult.payment);
-          renderPayments();
-          updatePaymentStats();
-        }
-      }
-      renderTable();
-      updateStats();
-      updateFooter();
-      renderRenewalHistory();
-      closeModal();
-      showToast(`New member <strong>${member.name}</strong> added successfully (${member.memberId})`, 'success');
-    } else {
+    if (!result.success) {
       showToast('Failed to add member: ' + (result.error || 'Unknown error'), 'error');
+      return;
     }
+    members.push(result.member);
+    renderTable();
+    updateStats();
+    updateFooter();
+    renderRenewalHistory();
+    closeModal();
+    showToast(`New member <strong>${member.name}</strong> added successfully (${member.memberId})`, 'success');
   } catch (err) {
     showToast('Failed to add member: ' + err.message, 'error');
+    return;
+  }
+
+  if (amount > 0) {
+    try {
+      const payment = {
+        txnId: generateTxnId(),
+        member: member.name,
+        amount,
+        method: 'Cash',
+        plan: member.plan,
+        type: 'New Registration',
+        status: 'Paid',
+        date: payDate(),
+        timestamp: Date.now()
+      };
+      const payResult = await API.createPayment(payment);
+      if (payResult.success) {
+        payments.unshift(payResult.payment);
+        renderPayments();
+        updatePaymentStats();
+      } else {
+        showToast('Initial payment recording failed: ' + (payResult.error || 'Unknown error'), 'error');
+      }
+    } catch (e) {
+      showToast('Failed to record initial payment: ' + e.message, 'error');
+    }
   }
 });
 
@@ -1461,8 +1475,15 @@ payModal?.addEventListener('click', (e) => {
 });
 
 function generateTxnId() {
-  const num = String(payments.length + 1).padStart(4, '0');
-  return `TXN-${num}`;
+  let maxNum = 0;
+  payments.forEach(p => {
+    const match = p.txnId && p.txnId.match(/TXN-(\d+)/);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+  return `TXN-${String(maxNum + 1).padStart(4, '0')}`;
 }
 
 function payDate() {

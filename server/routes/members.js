@@ -32,6 +32,7 @@ router.put('/members/:memberId', async (req, res) => {
     if (!member) return res.status(404).json({ error: 'Member not found' });
     res.json({ success: true, member });
   } catch (err) {
+    console.error('[-] PUT /members/:memberId error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

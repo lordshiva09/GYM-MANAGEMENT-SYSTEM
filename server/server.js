@@ -335,7 +335,7 @@ app.post('/api/create-test', async (req, res) => {
 });
 
 // Serve frontend files
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '..', 'dist')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ===== START =====

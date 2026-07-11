@@ -20,6 +20,18 @@ let editMemberId = null;
 const SESSION_KEY = 'rsgym_session';
 const SESSION_DURATION = 3600000;
 
+async function sessionGet(key) {
+  try {
+    return await Preferences.get({ key });
+  } catch { return { value: localStorage.getItem(key) }; }
+}
+async function sessionSet(key, value) {
+  try { await Preferences.set({ key, value }); } catch { localStorage.setItem(key, value); }
+}
+async function sessionRemove(key) {
+  try { await Preferences.remove({ key }); } catch { localStorage.removeItem(key); }
+}
+
 function doLogin(id, pass) {
   return id === DEFAULT_ADMIN_ID && pass === DEFAULT_ADMIN_PASS;
 }
@@ -31,25 +43,25 @@ function enterApp() {
 }
 
 async function logout() {
-  await Preferences.remove({ key: SESSION_KEY });
+  await sessionRemove(SESSION_KEY);
   location.reload();
 }
 
 function scheduleSessionReset() {
   setTimeout(async () => {
-    await Preferences.remove({ key: SESSION_KEY });
+    await sessionRemove(SESSION_KEY);
     location.reload();
   }, SESSION_DURATION);
 }
 
 (async () => {
-  const { value: session } = await Preferences.get({ key: SESSION_KEY });
+  const { value: session } = await sessionGet(SESSION_KEY);
   if (session) {
     const elapsed = Date.now() - Number(session);
     if (elapsed < SESSION_DURATION) {
       enterApp();
     } else {
-      await Preferences.remove({ key: SESSION_KEY });
+      await sessionRemove(SESSION_KEY);
     }
   }
 })();
@@ -60,7 +72,7 @@ document.getElementById('loginForm').addEventListener('submit', async function (
   const pass = document.getElementById('adminPass').value.trim();
   const errorEl = document.getElementById('loginError');
   if (doLogin(id, pass)) {
-    await Preferences.set({ key: SESSION_KEY, value: String(Date.now()) });
+    await sessionSet(SESSION_KEY, String(Date.now()));
     enterApp();
     errorEl.classList.remove('show');
   } else {

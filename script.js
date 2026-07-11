@@ -1,3 +1,6 @@
+import { Preferences } from '@capacitor/preferences';
+import './backbutton.js';
+
 // ===== ADMIN LOGIN =====
 const DEFAULT_ADMIN_ID = 'multigym';
 const DEFAULT_ADMIN_PASS = '500';
@@ -27,37 +30,37 @@ function enterApp() {
   scheduleSessionReset();
 }
 
-function logout() {
-  localStorage.removeItem(SESSION_KEY);
+async function logout() {
+  await Preferences.remove({ key: SESSION_KEY });
   location.reload();
 }
 
 function scheduleSessionReset() {
-  setTimeout(() => {
-    localStorage.removeItem(SESSION_KEY);
+  setTimeout(async () => {
+    await Preferences.remove({ key: SESSION_KEY });
     location.reload();
   }, SESSION_DURATION);
 }
 
-(function () {
-  const session = localStorage.getItem(SESSION_KEY);
+(async () => {
+  const { value: session } = await Preferences.get({ key: SESSION_KEY });
   if (session) {
     const elapsed = Date.now() - Number(session);
     if (elapsed < SESSION_DURATION) {
       enterApp();
     } else {
-      localStorage.removeItem(SESSION_KEY);
+      await Preferences.remove({ key: SESSION_KEY });
     }
   }
 })();
 
-document.getElementById('loginForm').addEventListener('submit', function (e) {
+document.getElementById('loginForm').addEventListener('submit', async function (e) {
   e.preventDefault();
   const id = document.getElementById('adminId').value.trim();
   const pass = document.getElementById('adminPass').value.trim();
   const errorEl = document.getElementById('loginError');
   if (doLogin(id, pass)) {
-    localStorage.setItem(SESSION_KEY, String(Date.now()));
+    await Preferences.set({ key: SESSION_KEY, value: String(Date.now()) });
     enterApp();
     errorEl.classList.remove('show');
   } else {
@@ -192,7 +195,7 @@ function showServerBanner() {
   updateRevenueChart();
 
   // Close mobile sidebar on link click
-  document.querySelectorAll('.sidebar .nav-links a').forEach(link => {
+  document.querySelectorAll('.sidebar .sidebar-nav a').forEach(link => {
     link.addEventListener('click', () => {
       document.getElementById('mobile-toggle').checked = false;
     });
@@ -458,6 +461,12 @@ function updateStats() {
   if (totalMembersEl) totalMembersEl.textContent = total;
   if (newMembersEl) newMembersEl.textContent = newMembersCount;
   if (expiringSoonEl) expiringSoonEl.textContent = expiring;
+
+  const expiredStatEl = document.querySelector('#dashboard .stat-card.warning-border .stat-value');
+  if (expiredStatEl) {
+    const expiredCount = members.filter(m => minutesUntilExpiry(m.expiryDate) <= 0).length;
+    expiredStatEl.textContent = expiredCount;
+  }
 }
 
 // Update table footer
@@ -538,9 +547,17 @@ async function deleteSelectedMembers() {
   }
 }
 
+function getComputedStatus(m) {
+  const minsLeft = minutesUntilExpiry(m.expiryDate);
+  if (minsLeft <= 0) return 'Expired';
+  if (minsLeft <= 2880) return 'Pending';
+  return 'Active';
+}
+
 function getFilteredMembers() {
   return members.filter(m => {
-    if (filterStatus !== 'all' && m.status !== filterStatus) return false;
+    const status = getComputedStatus(m);
+    if (filterStatus !== 'all' && status !== filterStatus) return false;
     if (filterPlan !== 'all' && m.plan !== filterPlan) return false;
     return true;
   });
@@ -566,7 +583,8 @@ function renderTable() {
   let html = '';
   pageItems.forEach(m => {
     const initials = m.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const statusClass = m.status === 'Active' ? 'active' : m.status === 'Expired' ? 'expired' : 'warning';
+    const computedStatus = getComputedStatus(m);
+    const statusClass = computedStatus === 'Active' ? 'active' : computedStatus === 'Expired' ? 'expired' : 'warning';
     const planClass = m.plan === 'Premium' ? 'premium' : m.plan === 'Standard' ? 'standard' : 'basic';
     const minsLeft = minutesUntilExpiry(m.expiryDate);
     const checked = selectedMemberIds.has(m.memberId) ? 'checked' : '';
@@ -579,7 +597,7 @@ function renderTable() {
       <td><span class="plan-badge ${planClass}">${m.plan}</span></td>
       <td>${m.joinDate}</td>
       <td>${m.expiryDate}</td>
-      <td><span class="status-badge ${statusClass}">${m.status}</span></td>
+      <td><span class="status-badge ${statusClass}">${computedStatus}</span></td>
       <td><div style="display:flex;gap:4px;position:relative;"><button class="action-btn" onclick="quickPay('${m.name}')" title="Make Payment"><i class="fas fa-rupee-sign"></i></button><button class="action-btn" onclick="toggleMemberMenu('${m.memberId}')" title="More"><i class="fas fa-ellipsis-v"></i></button><div class="member-menu" id="menu-${m.memberId}">${minsLeft <= 2880 ? `<button onclick="renewMember('${m.memberId}')"><i class="fas fa-sync"></i> Renew</button>` : ''}<button onclick="editMember('${m.memberId}')"><i class="fas fa-edit"></i> Edit</button><button onclick="viewFullDetails('${m.memberId}')"><i class="fas fa-info-circle"></i> View Full Details</button><button onclick="deleteMember('${m.memberId}')" class="danger"><i class="fas fa-trash"></i> Delete</button></div></div></td>
     </tr>`;
   });
@@ -747,6 +765,10 @@ async function renewMember(id) {
   const m = members.find(mem => mem.memberId === id);
   if (!m) return;
   if (!confirm(`Renew membership for ${m.name} (${m.memberId})? This will extend expiry by 30 days.`)) return;
+  const amountStr = prompt(`Enter renewal amount for ${m.name}:`, '500');
+  if (amountStr === null) return;
+  const amount = Number(amountStr) || 0;
+  if (amount <= 0) { showToast('Invalid amount entered.', 'error'); return; }
   const now = new Date();
   const newExpiry = new Date(now);
   newExpiry.setDate(newExpiry.getDate() + 30);
@@ -768,8 +790,6 @@ async function renewMember(id) {
     showToast('Failed to update member expiry: ' + e.message, 'error');
     return;
   }
-  const amount = Number(prompt(`Enter renewal amount for ${m.name}:`, '500')) || 500;
-  if (amount <= 0) return;
   try {
     const payment = {
       txnId: generateTxnId(),
@@ -822,7 +842,7 @@ function loadRenewMembers() {
   renderRenewalHistory();
 }
 
-function renderRenewalHistory() {
+function renderRenewalHistory(showAll) {
   const todayBody = document.getElementById('todayRenewalsBody');
   const todayFooter = document.getElementById('todayRenewalsFooter');
   const prevBody = document.getElementById('previousRenewalsBody');
@@ -831,7 +851,7 @@ function renderRenewalHistory() {
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const todayEnd = todayStart + 86400000;
+  const twoDaysAgoStart = todayStart - 86400000;
 
   const allRenewals = payments.filter(p => p.type === 'Renewal').sort((a, b) => {
     const ta = a.timestamp || new Date(a.date).getTime();
@@ -839,15 +859,20 @@ function renderRenewalHistory() {
     return tb - ta;
   });
 
-  const todayRenewals = allRenewals.filter(p => {
+  const recentRenewals = allRenewals.filter(p => {
     const ts = p.timestamp || new Date(p.date).getTime();
-    return ts >= todayStart && ts < todayEnd;
+    return ts >= twoDaysAgoStart;
   });
 
-  const prevRenewals = allRenewals.filter(p => {
-    const ts = p.timestamp || new Date(p.date).getTime();
-    return ts < todayStart;
-  });
+  let prevRenewals;
+  if (showAll) {
+    prevRenewals = allRenewals.filter(p => {
+      const ts = p.timestamp || new Date(p.date).getTime();
+      return ts < twoDaysAgoStart;
+    });
+  } else {
+    prevRenewals = [];
+  }
 
   function renderRows(list) {
     if (list.length === 0) return '';
@@ -868,13 +893,15 @@ function renderRenewalHistory() {
     return html;
   }
 
-  const todayHtml = renderRows(todayRenewals);
-  todayBody.innerHTML = todayHtml || `<tr><td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 0.9rem;">No renewals today.</td></tr>`;
-  if (todayFooter) todayFooter.textContent = `Showing ${todayRenewals.length} renewal${todayRenewals.length !== 1 ? 's' : ''} today`;
+  const recentHtml = renderRows(recentRenewals);
+  todayBody.innerHTML = recentHtml || `<tr><td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 0.9rem;">No renewals in last 2 days.</td></tr>`;
+  if (todayFooter) todayFooter.textContent = `Showing ${recentRenewals.length} renewal${recentRenewals.length !== 1 ? 's' : ''} (last 2 days)`;
 
   const prevHtml = renderRows(prevRenewals);
   prevBody.innerHTML = prevHtml || `<tr><td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 0.9rem;">No previous renewals.</td></tr>`;
-  if (prevFooter) prevFooter.textContent = `Showing ${prevRenewals.length} previous renewal${prevRenewals.length !== 1 ? 's' : ''}`;
+  if (prevFooter) prevFooter.textContent = showAll
+    ? `Showing ${prevRenewals.length} previous renewal${prevRenewals.length !== 1 ? 's' : ''}`
+    : 'Search to view older renewals';
 }
 
 // ===== TOAST NOTIFICATION SYSTEM =====
@@ -1184,7 +1211,8 @@ form.addEventListener('submit', async (e) => {
       showToast('Failed to add member: ' + (result.error || 'Unknown error'), 'error');
       return;
     }
-    members.push(result.member);
+    await loadMembers();
+    currentPage = 1;
     renderTable();
     updateStats();
     updateFooter();
@@ -1267,7 +1295,12 @@ document.querySelectorAll('.notif-filter').forEach(f => {
 
 // ===== RENEWAL SEARCH =====
 document.getElementById('renewalSearch')?.addEventListener('input', function () {
-  const q = this.value.toLowerCase();
+  const q = this.value.toLowerCase().trim();
+  if (q) {
+    renderRenewalHistory(true);
+  } else {
+    renderRenewalHistory(false);
+  }
   document.querySelectorAll('#todayRenewalsBody tr, #previousRenewalsBody tr').forEach(row => {
     const text = row.textContent.toLowerCase();
     row.style.display = text.includes(q) ? '' : 'none';
@@ -1805,3 +1838,22 @@ trainerForm?.addEventListener('submit', async function (e) {
     showToast('Failed to add trainer: ' + err.message, 'error');
   }
 });
+
+// Expose to window for HTML inline handlers (needed for ES modules)
+window.logout = logout;
+window.generatePDF = generatePDF;
+window.deleteSelectedMembers = deleteSelectedMembers;
+window.toggleSelectAll = toggleSelectAll;
+window.copyUPI = copyUPI;
+window.openUPIApp = openUPIApp;
+window.testWhatsApp = testWhatsApp;
+window.saveUPIId = saveUPIId;
+window.loadRenewMembers = loadRenewMembers;
+window.deleteTrainer = deleteTrainer;
+window.goToPage = goToPage;
+window.quickPay = quickPay;
+window.toggleMemberMenu = toggleMemberMenu;
+window.renewMember = renewMember;
+window.editMember = editMember;
+window.viewFullDetails = viewFullDetails;
+window.deleteMember = deleteMember;

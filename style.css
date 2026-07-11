@@ -5,34 +5,35 @@
 
 /* ----- CSS Variables ----- */
 :root {
-  --bg-primary: #12121e;
-  --bg-secondary: #18182a;
-  --bg-tertiary: #1e1e35;
-  --bg-card: rgba(24, 24, 48, 0.85);
-  --bg-card-hover: rgba(30, 30, 55, 0.9);
-  --bg-glass: rgba(18, 18, 35, 0.7);
-  --bg-sidebar: #0e0e1a;
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f0f0f0;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: rgba(255, 255, 255, 1);
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-sidebar: #ffffff;
 
-  --accent: #4da6ff;
-  --accent-light: #80c4ff;
-  --accent-dark: #2980b9;
-  --accent-glow: rgba(77, 166, 255, 0.12);
-  --accent-glow-strong: rgba(77, 166, 255, 0.3);
+  --accent: #d4af37;
+  --accent-light: #e8c84a;
+  --accent-dark: #b08d1a;
+  --accent-glow: rgba(212, 175, 55, 0.1);
+  --accent-glow-strong: rgba(212, 175, 55, 0.25);
 
-  --text-primary: #eef2f8;
-  --text-secondary: #a0b4d0;
-  --text-muted: #5c6e8a;
-  --text-dark: #0a0a1a;
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a5a;
+  --text-muted: #888899;
+  --text-dark: #ffffff;
 
-  --border: rgba(77, 166, 255, 0.06);
-  --border-accent: rgba(77, 166, 255, 0.18);
-  --border-hover: rgba(77, 166, 255, 0.12);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-accent: rgba(212, 175, 55, 0.3);
+  --border-hover: rgba(212, 175, 55, 0.15);
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.45);
-  --shadow-accent: 0 4px 20px rgba(77, 166, 255, 0.15);
-  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(77, 166, 255, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+  --shadow-accent: 0 4px 20px rgba(212, 175, 55, 0.15);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.15);
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -204,7 +205,7 @@ input, textarea, select, button { font-family: inherit; font-size: inherit; outl
 }
 
 .upgrade-card {
-  background: linear-gradient(135deg, rgba(77,166,255,0.08), rgba(77,166,255,0.02));
+  background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(212,175,55,0.02));
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-md);
   padding: 16px;
@@ -646,7 +647,7 @@ body:has(.page:target) #dashboard {
   letter-spacing: -1px;
   line-height: 1.2;
   margin: 2px 0 4px;
-  background: linear-gradient(135deg, #80c4ff 0%, #4da6ff 50%, #80c4ff 100%);
+  background: linear-gradient(135deg, #e8c84a 0%, #d4af37 50%, #e8c84a 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1195,7 +1196,7 @@ body:has(.page:target) #dashboard {
 }
 
 tr.selected-row {
-  background: rgba(77, 166, 255, 0.08) !important;
+  background: rgba(212, 175, 55, 0.08) !important;
   outline: 1px solid var(--border-accent);
 }
 
@@ -1291,7 +1292,7 @@ tr.selected-row {
 .plan-card.featured {
   border-color: var(--accent);
   box-shadow: var(--shadow-accent);
-  background: linear-gradient(135deg, rgba(77,166,255,0.05), var(--bg-card));
+  background: linear-gradient(135deg, rgba(212,175,55,0.05), var(--bg-card));
 }
 
 .plan-card.featured::before {
@@ -1896,7 +1897,7 @@ tr.selected-row {
     transform: translateX(-100%);
     width: 260px;
     z-index: 200;
-    background: #0e0e1a;
+    background: #ffffff;
   }
 
   .hamburger { display: block; }
@@ -2519,4 +2520,320 @@ body:not(:has(.page:target)) .nav-item[href="#dashboard"]::before {
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
+}
+
+/* ============================================
+   CAPACITOR / NATIVE MOBILE FIXES
+   ============================================ */
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-top)) {
+  .topbar {
+    padding-top: env(safe-area-inset-top);
+    height: calc(var(--topbar-height) + env(safe-area-inset-top));
+  }
+  .sidebar {
+    padding-top: env(safe-area-inset-top);
+  }
+  .content-area {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .footer {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .login-overlay {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .modal-card {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+  .toast-container {
+    top: calc(20px + env(safe-area-inset-top));
+  }
+}
+
+/* Capacitor status bar — push content below it */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Better mobile text selection on inputs */
+input, textarea, select {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Improved touch targets — minimum 44px for all interactive elements */
+@media (max-width: 768px) {
+  .nav-item {
+    padding: 14px 20px;
+    min-height: 44px;
+  }
+
+  .hamburger {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn {
+    min-height: 44px;
+    padding: 12px 20px;
+  }
+
+  .form-input {
+    padding: 14px 16px;
+    font-size: 16px;
+  }
+
+  .page-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .notification-icon {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .profile-dropdown {
+    padding: 8px 12px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filter-select {
+    padding: 10px 12px;
+    min-height: 44px;
+    font-size: 0.85rem;
+  }
+
+  .logout-area {
+    padding: 14px 20px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Better mobile card layout */
+@media (max-width: 768px) {
+  .stat-card {
+    padding: 16px 18px;
+    border-radius: var(--radius-md);
+  }
+
+  .stat-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+  }
+
+  .card {
+    border-radius: var(--radius-md);
+  }
+
+  .card-header {
+    padding: 16px 18px;
+  }
+
+  .card-header h3 {
+    font-size: 0.95rem;
+  }
+}
+
+/* Mobile topbar — better spacing */
+@media (max-width: 768px) {
+  .topbar {
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  .topbar-right {
+    gap: 4px;
+  }
+
+  .topbar-right .notification-icon:first-child {
+    display: none;
+  }
+}
+
+/* Mobile sidebar improvements */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 280px;
+    background: #ffffff;
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15);
+  }
+
+  .mobile-toggle-input:checked ~ .app .mobile-overlay {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
+}
+
+/* Mobile login page — better sizing */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 32px 24px 28px;
+    margin: 16px;
+    max-width: none;
+  }
+
+  .login-logo-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+
+  .login-logo h2 {
+    font-size: 1.1rem;
+  }
+
+  .login-form .form-input {
+    padding: 14px 16px;
+    font-size: 16px;
+  }
+}
+
+/* Mobile toast notifications — full width at bottom */
+@media (max-width: 480px) {
+  .toast-container {
+    top: auto;
+    bottom: 20px;
+    left: 16px;
+    right: 16px;
+    max-width: none;
+  }
+}
+
+/* Mobile modals — full screen */
+@media (max-width: 480px) {
+  .modal-card {
+    max-width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    margin-top: auto;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-header {
+    padding: 20px 20px 0;
+  }
+
+  .modal-body {
+    padding: 16px 20px;
+  }
+
+  .modal-footer {
+    padding: 16px 20px 20px;
+  }
+}
+
+/* Mobile table improvements */
+@media (max-width: 768px) {
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -18px;
+    padding: 0 18px 8px;
+    position: relative;
+  }
+
+  .table-wrapper::-webkit-scrollbar {
+    height: 6px;
+  }
+  .table-wrapper::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+  }
+  .table-wrapper::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 10px;
+  }
+
+  .table-wrapper::after {
+    content: '\f337';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: sticky;
+    right: 18px;
+    bottom: 10px;
+    float: right;
+    background: var(--accent);
+    color: var(--text-dark);
+    font-size: 0.65rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0.7;
+    animation: scrollHint 2s ease-in-out infinite;
+  }
+
+  @keyframes scrollHint {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(6px); }
+  }
+
+  .data-table {
+    min-width: 700px;
+    font-size: 0.75rem;
+  }
+
+  .data-table th, .data-table td {
+    padding: 10px 8px;
+    white-space: nowrap;
+  }
+}
+
+/* Mobile chart cards */
+@media (max-width: 768px) {
+  .chart-card {
+    padding: 16px;
+  }
+
+  .chart-card.large {
+    min-height: 200px;
+  }
+
+  .bar-chart {
+    height: 160px;
+  }
+}
+
+/* Better scrolling on mobile */
+@supports (-webkit-touch-callout: none) {
+  .content-area {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+  }
 }

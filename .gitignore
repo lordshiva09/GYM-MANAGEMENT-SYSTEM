@@ -1,5 +1,12 @@
 node_modules/
 .env
+.env.development
+.env.production
+dist/
+android/
+ios/
+.capacitor/
+resources/
 server/node_modules/
 server/.env
 server/sent-alerts.json

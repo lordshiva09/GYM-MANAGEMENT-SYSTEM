@@ -3,9 +3,53 @@ const router = express.Router();
 const Member = require('../models/Member');
 const Payment = require('../models/Payment');
 
+function parseDate(dateStr) {
+  const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  const parts = dateStr.split(', ');
+  if (parts.length < 2) return new Date();
+  const dateParts = parts[0].split(' ');
+  const month = months[dateParts[0]];
+  const day = parseInt(dateParts[1]);
+  const year = parseInt(parts[1]);
+  if (parts[1] && parts[1].includes(':')) {
+    const timeParts = parts[1].split(' ');
+    if (timeParts.length > 1) {
+      const hm = timeParts[1].split(':');
+      const hours = parseInt(hm[0]);
+      const mins = parseInt(hm[1]);
+      return new Date(year, month, day, hours, mins);
+    }
+  }
+  return new Date(year, month, day);
+}
+
+function computeStatus(expiryDateStr) {
+  if (!expiryDateStr) return 'Active';
+  const now = new Date();
+  const exp = parseDate(expiryDateStr);
+  const diffMs = exp - now;
+  const minsLeft = diffMs / (1000 * 60);
+  if (minsLeft <= 0) return 'Expired';
+  if (minsLeft <= 2880) return 'Pending';
+  return 'Active';
+}
+
 router.get('/members', async (req, res) => {
   try {
     const members = await Member.find().sort({ createdAt: -1 });
+    const bulkOps = [];
+    for (const m of members) {
+      const correctStatus = computeStatus(m.expiryDate);
+      if (m.status !== correctStatus) {
+        m.status = correctStatus;
+        bulkOps.push({
+          updateOne: { filter: { memberId: m.memberId }, update: { $set: { status: correctStatus } } }
+        });
+      }
+    }
+    if (bulkOps.length > 0) {
+      await Member.bulkWrite(bulkOps);
+    }
     res.json(members);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,5 +1,5 @@
 const API = {
-  base: window.location.hostname === 'localhost' && window.location.port !== '3001' ? 'http://localhost:3001' : '',
+  base: import.meta.env.VITE_API_BASE || '',
 
   async request(method, url, body) {
     const opts = {
@@ -35,3 +35,5 @@ const API = {
   createTrainer(data) { return this.post('/api/trainers', data); },
   deleteTrainer(id) { return this.del('/api/trainers/' + encodeURIComponent(id)); }
 };
+
+window.API = API;

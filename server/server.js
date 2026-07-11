@@ -181,7 +181,22 @@ async function seedMembersFromFile() {
 
 // ===== EXPRESS SERVER =====
 const app = express();
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3001',
+  'https://localhost',
+  'capacitor://localhost',
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 
 // API routes

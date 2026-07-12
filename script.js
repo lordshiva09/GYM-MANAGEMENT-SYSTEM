@@ -571,52 +571,8 @@ function getFilteredMembers() {
     const status = getComputedStatus(m);
     if (filterStatus !== 'all' && status !== filterStatus) return false;
     if (filterPlan !== 'all' && m.plan !== filterPlan) return false;
-    if (searchQuery) {
-      const haystack = `${m.memberId} ${m.name} ${m.mobile} ${m.plan} ${m.timing} ${m.joinDate} ${m.expiryDate} ${status}`.toLowerCase();
-      if (!haystack.includes(searchQuery)) return false;
-    }
     return true;
   });
-}
-
-// Render mobile member cards (horizontal scroll)
-function renderMobileCards(list) {
-  const container = document.getElementById('mobileMemberCards');
-  if (!container) return;
-  if (list.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:24px 0;text-align:center;">No members found.</p>';
-    return;
-  }
-  let html = '';
-  list.forEach(m => {
-    const initials = m.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const computedStatus = getComputedStatus(m);
-    const statusClass = computedStatus === 'Active' ? 'active' : computedStatus === 'Expired' ? 'expired' : 'warning';
-    const planClass = m.plan === 'Premium' ? 'premium' : m.plan === 'Standard' ? 'standard' : 'basic';
-    const minsLeft = minutesUntilExpiry(m.expiryDate);
-    html += `<div class="mobile-member-card">
-      <div class="mmc-header">
-        <div class="mmc-avatar">${initials}</div>
-        <div>
-          <div class="mmc-name">${m.name}</div>
-          <div class="mmc-id">${m.memberId}</div>
-        </div>
-        <span class="status-badge ${statusClass}" style="margin-left:auto;font-size:0.7rem;">${computedStatus}</span>
-      </div>
-      <div class="mmc-row"><span class="mmc-label">Mobile</span><span class="mmc-value">${m.mobile}</span></div>
-      <div class="mmc-row"><span class="mmc-label">Plan</span><span class="plan-badge ${planClass}">${m.plan}</span></div>
-      <div class="mmc-row"><span class="mmc-label">Timing</span><span class="mmc-value">${m.timing}</span></div>
-      <div class="mmc-row"><span class="mmc-label">Joined</span><span class="mmc-value">${m.joinDate}</span></div>
-      <div class="mmc-row"><span class="mmc-label">Expiry</span><span class="mmc-value">${m.expiryDate}</span></div>
-      <div class="mmc-actions">
-        <button class="btn btn-gold" onclick="quickPay('${m.name}')"><i class="fas fa-rupee-sign"></i> Pay</button>
-        ${minsLeft <= 2880 ? `<button class="btn btn-outline" onclick="renewMember('${m.memberId}')"><i class="fas fa-sync"></i> Renew</button>` : ''}
-        <button class="btn btn-outline" onclick="editMember('${m.memberId}')"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-outline" onclick="deleteMember('${m.memberId}')" style="border-color:#ef4444;color:#ef4444;"><i class="fas fa-trash"></i></button>
-      </div>
-    </div>`;
-  });
-  container.innerHTML = html;
 }
 
 // Render member rows with filtering + pagination
@@ -624,8 +580,6 @@ function renderTable() {
   const filtered = getFilteredMembers();
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   if (currentPage > totalPages) currentPage = totalPages;
-
-  renderMobileCards(filtered);
 
   if (filtered.length === 0) {
     selectedMemberIds.clear();
@@ -1317,13 +1271,15 @@ function setCurrentDate() {
 setInterval(setCurrentDate, 86400000);
 
 // ===== SEARCH FUNCTIONALITY =====
-let searchQuery = '';
-const searchInput = document.querySelector('#members .search-box input');
+const searchInput = document.querySelector('.search-box input');
 if (searchInput) {
   searchInput.addEventListener('input', function () {
-    searchQuery = this.value.toLowerCase().trim();
-    currentPage = 1;
-    renderTable();
+    const q = this.value.toLowerCase();
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(q) ? '' : 'none';
+    });
   });
 }
 

@@ -2767,42 +2767,7 @@ input, textarea, select {
     margin: 0 -18px;
     padding: 0 18px 12px;
     position: relative;
-  }
-
-  .table-wrapper::-webkit-scrollbar {
-    height: 8px;
-  }
-  .table-wrapper::-webkit-scrollbar-track {
-    background: var(--bg-tertiary);
-    border-radius: 10px;
-  }
-  .table-wrapper::-webkit-scrollbar-thumb {
-    background: var(--accent);
-    border-radius: 10px;
-  }
-
-  .table-wrapper::after {
-    content: '\f337 \6swipe left';
-    font-family: 'Font Awesome 6 Free', var(--font);
-    font-weight: 900;
-    position: sticky;
-    right: 18px;
-    bottom: 14px;
-    float: right;
-    background: var(--accent);
-    color: var(--text-dark);
-    font-size: 0.7rem;
-    padding: 5px 12px;
-    border-radius: 20px;
-    pointer-events: none;
-    opacity: 0.85;
-    animation: scrollHint 2s ease-in-out infinite;
-    white-space: nowrap;
-  }
-
-  @keyframes scrollHint {
-    0%, 100% { transform: translateX(0); }
-    50% { transform: translateX(8px); }
+    border-bottom: 3px solid var(--accent);
   }
 
   .data-table {

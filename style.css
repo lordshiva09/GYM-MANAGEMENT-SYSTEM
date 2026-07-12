@@ -2762,13 +2762,8 @@ input, textarea, select {
 /* Mobile table improvements */
 @media (max-width: 768px) {
   .table-wrapper {
-    overflow-x: scroll;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-x;
-    margin: 0 -18px;
-    padding: 0 18px 20px;
-    position: relative;
-    border-bottom: 3px solid var(--accent);
   }
 
   .data-table {
@@ -2779,11 +2774,6 @@ input, textarea, select {
   .data-table th, .data-table td {
     padding: 10px 8px;
     white-space: nowrap;
-  }
-
-  #members .card,
-  #renew-members .card {
-    overflow: visible;
   }
 }
 

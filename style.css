@@ -2765,12 +2765,12 @@ input, textarea, select {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin: 0 -18px;
-    padding: 0 18px 8px;
+    padding: 0 18px 12px;
     position: relative;
   }
 
   .table-wrapper::-webkit-scrollbar {
-    height: 6px;
+    height: 8px;
   }
   .table-wrapper::-webkit-scrollbar-track {
     background: var(--bg-tertiary);
@@ -2782,43 +2782,42 @@ input, textarea, select {
   }
 
   .table-wrapper::after {
-    content: '\f337';
-    font-family: 'Font Awesome 6 Free';
+    content: '\f337 \6swipe left';
+    font-family: 'Font Awesome 6 Free', var(--font);
     font-weight: 900;
     position: sticky;
     right: 18px;
-    bottom: 10px;
+    bottom: 14px;
     float: right;
     background: var(--accent);
     color: var(--text-dark);
-    font-size: 0.65rem;
-    padding: 4px 10px;
+    font-size: 0.7rem;
+    padding: 5px 12px;
     border-radius: 20px;
     pointer-events: none;
-    opacity: 0.7;
+    opacity: 0.85;
     animation: scrollHint 2s ease-in-out infinite;
+    white-space: nowrap;
   }
 
   @keyframes scrollHint {
     0%, 100% { transform: translateX(0); }
-    50% { transform: translateX(6px); }
+    50% { transform: translateX(8px); }
   }
 
   .data-table {
-    min-width: 520px;
+    min-width: 700px;
     font-size: 0.75rem;
   }
 
   .data-table th, .data-table td {
-    padding: 8px 6px;
+    padding: 10px 8px;
     white-space: nowrap;
   }
 
-  .data-table th:nth-child(1),
-  .data-table td:nth-child(1),
-  .data-table th:nth-child(6),
-  .data-table td:nth-child(6) {
-    display: none;
+  #members .card,
+  #renew-members .card {
+    overflow: visible;
   }
 }
 

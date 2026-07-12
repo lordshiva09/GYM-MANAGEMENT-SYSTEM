@@ -571,6 +571,10 @@ function getFilteredMembers() {
     const status = getComputedStatus(m);
     if (filterStatus !== 'all' && status !== filterStatus) return false;
     if (filterPlan !== 'all' && m.plan !== filterPlan) return false;
+    if (searchQuery) {
+      const haystack = `${m.memberId} ${m.name} ${m.mobile} ${m.plan} ${m.timing} ${m.joinDate} ${m.expiryDate} ${status}`.toLowerCase();
+      if (!haystack.includes(searchQuery)) return false;
+    }
     return true;
   });
 }
@@ -1271,15 +1275,13 @@ function setCurrentDate() {
 setInterval(setCurrentDate, 86400000);
 
 // ===== SEARCH FUNCTIONALITY =====
-const searchInput = document.querySelector('.search-box input');
+let searchQuery = '';
+const searchInput = document.querySelector('#members .search-box input');
 if (searchInput) {
   searchInput.addEventListener('input', function () {
-    const q = this.value.toLowerCase();
-    const rows = tbody.querySelectorAll('tr');
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      row.style.display = text.includes(q) ? '' : 'none';
-    });
+    searchQuery = this.value.toLowerCase().trim();
+    currentPage = 1;
+    renderTable();
   });
 }
 

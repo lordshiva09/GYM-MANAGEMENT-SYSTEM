@@ -29,9 +29,7 @@ const API = {
     if (res.status === 401 || res.status === 403) {
       this.setToken(null);
       localStorage.removeItem('rsgym_session');
-      if (!url.includes('/auth/')) {
-        location.reload();
-      }
+      localStorage.removeItem('rsgym_token');
     }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: `API error: ${res.status}` }));

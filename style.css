@@ -2035,7 +2035,9 @@ body:has(#members:target) .nav-item[href="#members"],
 body:has(#renew-members:target) .nav-item[href="#renew-members"],
 body:has(#trainers:target) .nav-item[href="#trainers"],
 body:has(#notifications:target) .nav-item[href="#notifications"],
-body:has(#settings:target) .nav-item[href="#settings"] {
+body:has(#payments:target) .nav-item[href="#payments"],
+body:has(#settings:target) .nav-item[href="#settings"],
+body:has(#attendance:target) .nav-item[href="#attendance"] {
   background: var(--accent-glow);
   color: var(--accent);
   font-weight: 600;
@@ -2046,7 +2048,9 @@ body:has(#members:target) .nav-item[href="#members"]::before,
 body:has(#renew-members:target) .nav-item[href="#renew-members"]::before,
 body:has(#trainers:target) .nav-item[href="#trainers"]::before,
 body:has(#notifications:target) .nav-item[href="#notifications"]::before,
-body:has(#settings:target) .nav-item[href="#settings"]::before {
+body:has(#payments:target) .nav-item[href="#payments"]::before,
+body:has(#settings:target) .nav-item[href="#settings"]::before,
+body:has(#attendance:target) .nav-item[href="#attendance"]::before {
   content: '';
   position: absolute;
   left: -10px;
@@ -2835,5 +2839,224 @@ input, textarea, select {
   .content-area {
     -webkit-overflow-scrolling: touch;
     overflow-y: auto;
+  }
+}
+
+/* ============================================
+   ATTENDANCE SYSTEM STYLES
+   ============================================ */
+
+.attendance-status-bar {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.attendance-status-bar .status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.green {
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+}
+
+.status-dot.red {
+  background: #ef4444;
+}
+
+.attendance-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.action-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.action-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-accent);
+  transform: translateY(-2px);
+}
+
+.action-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: var(--accent-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+
+.action-icon.pulse {
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.3); }
+  50% { box-shadow: 0 0 0 12px rgba(212, 175, 55, 0); }
+}
+
+.action-card h3 {
+  font-size: 1rem;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.action-card p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.method-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.method-badge.webauthn, .method-badge.fingerprint {
+  background: rgba(74, 222, 128, 0.15);
+  color: #16a34a;
+}
+
+.method-badge.manual {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+}
+
+.method-badge.demo {
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--accent-dark);
+}
+
+.status-badge.active {
+  background: rgba(74, 222, 128, 0.15);
+  color: #16a34a;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge.red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 32px 16px !important;
+  font-size: 0.875rem;
+}
+
+.btn-sm {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+}
+
+/* Scan overlay */
+.scan-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.scan-modal {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 48px 40px;
+  text-align: center;
+  box-shadow: var(--shadow-xl);
+  max-width: 360px;
+  width: 90%;
+}
+
+.fingerprint-animation {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 2.5rem;
+  color: var(--accent);
+  animation: scanPulse 1.2s ease-in-out infinite;
+}
+
+.fingerprint-animation.small {
+  width: 64px;
+  height: 64px;
+  font-size: 1.6rem;
+  margin-bottom: 12px;
+}
+
+@keyframes scanPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(212, 175, 55, 0); }
+}
+
+.scan-modal h3 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.scan-modal p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Attendance page responsive */
+@media (max-width: 768px) {
+  .attendance-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-status-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
   }
 }

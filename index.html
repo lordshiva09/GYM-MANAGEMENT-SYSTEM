@@ -81,6 +81,10 @@
         <i class="fas fa-cog"></i>
         <span>Settings</span>
       </a>
+      <a href="#attendance" class="nav-item">
+        <i class="fas fa-fingerprint"></i>
+        <span>Attendance</span>
+      </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -793,6 +797,106 @@
                   <input type="email" class="form-input" placeholder="Enter sender email">
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ATTENDANCE PAGE ===== -->
+      <section id="attendance" class="page">
+        <div class="page-header">
+          <div>
+            <h1><i class="fas fa-fingerprint gold"></i> Attendance</h1>
+            <p class="page-subtitle">Biometric attendance tracking (Demo Mode)</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline" onclick="loadAttendanceData()"><i class="fas fa-sync"></i> Refresh</button>
+          </div>
+        </div>
+
+        <!-- Device Status -->
+        <div class="attendance-status-bar" id="attendanceStatusBar">
+          <div class="status-item">
+            <span class="status-dot green"></span>
+            <span>Demo Mode Active</span>
+          </div>
+          <div class="status-item">
+            <i class="fas fa-users"></i>
+            <span>Enrolled: <strong id="enrolledCount">0</strong></span>
+          </div>
+          <div class="status-item">
+            <i class="fas fa-check-circle"></i>
+            <span>Today: <strong id="todayCount">0</strong></span>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="attendance-actions">
+          <div class="action-card" onclick="handleFingerprintScan()">
+            <div class="action-icon pulse">
+              <i class="fas fa-fingerprint"></i>
+            </div>
+            <h3>Scan Fingerprint</h3>
+            <p>Click to simulate biometric scan</p>
+          </div>
+          <div class="action-card" onclick="showEnrollModal()">
+            <div class="action-icon">
+              <i class="fas fa-user-plus"></i>
+            </div>
+            <h3>Enroll Member</h3>
+            <p>Register member's fingerprint</p>
+          </div>
+          <div class="action-card" onclick="showManualCheckinModal()">
+            <div class="action-icon">
+              <i class="fas fa-keyboard"></i>
+            </div>
+            <h3>Manual Check-in</h3>
+            <p>Enter member ID manually</p>
+          </div>
+        </div>
+
+        <!-- Today's Attendance -->
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-calendar-day gold"></i> Today's Attendance</h3>
+            <span class="badge" id="todayBadge">0</span>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Time</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTableBody">
+                <tr><td colspan="4" class="empty-state">No attendance records today</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Absent Members -->
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header">
+            <h3><i class="fas fa-user-slash" style="color:#ef4444;"></i> Absent Members</h3>
+            <span class="badge red" id="absentBadge">0</span>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Plan</th>
+                  <th>Timing</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="absentTableBody">
+                <tr><td colspan="4" class="empty-state">All members present!</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>

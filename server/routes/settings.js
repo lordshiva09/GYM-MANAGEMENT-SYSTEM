@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Settings = require('../models/Settings');
+const { authenticateToken } = require('../middleware/auth');
 
 router.get('/settings', async (req, res) => {
   try {
@@ -14,7 +15,7 @@ router.get('/settings', async (req, res) => {
   }
 });
 
-router.put('/settings', async (req, res) => {
+router.put('/settings', authenticateToken, async (req, res) => {
   try {
     const settings = await Settings.findOneAndUpdate(
       { key: 'gym_settings' },

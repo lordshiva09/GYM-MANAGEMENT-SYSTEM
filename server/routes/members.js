@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Member = require('../models/Member');
 const Payment = require('../models/Payment');
+const { authenticateToken } = require('../middleware/auth');
+const { body, validationResult } = require('express-validator');
 
 function parseDate(dateStr) {
   const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
@@ -34,7 +36,7 @@ function computeStatus(expiryDateStr) {
   return 'Active';
 }
 
-router.get('/members', async (req, res) => {
+router.get('/members', authenticateToken, async (req, res) => {
   try {
     const members = await Member.find().sort({ createdAt: -1 });
     const bulkOps = [];
@@ -56,7 +58,15 @@ router.get('/members', async (req, res) => {
   }
 });
 
-router.post('/members', async (req, res) => {
+router.post('/members', authenticateToken, [
+  body('memberId').trim().notEmpty().withMessage('Member ID required'),
+  body('name').trim().notEmpty().withMessage('Name required'),
+  body('mobile').trim().notEmpty().withMessage('Mobile required')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+  }
   try {
     const member = new Member(req.body);
     await member.save();
@@ -66,7 +76,7 @@ router.post('/members', async (req, res) => {
   }
 });
 
-router.put('/members/:memberId', async (req, res) => {
+router.put('/members/:memberId', authenticateToken, async (req, res) => {
   try {
     const member = await Member.findOneAndUpdate(
       { memberId: req.params.memberId },
@@ -81,7 +91,7 @@ router.put('/members/:memberId', async (req, res) => {
   }
 });
 
-router.delete('/members/:memberId', async (req, res) => {
+router.delete('/members/:memberId', authenticateToken, async (req, res) => {
   try {
     const member = await Member.findOne({ memberId: req.params.memberId });
     if (!member) return res.status(404).json({ error: 'Member not found' });

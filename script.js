@@ -2,8 +2,8 @@ import { Preferences } from '@capacitor/preferences';
 import './backbutton.js';
 
 // ===== ADMIN LOGIN =====
-const DEFAULT_ADMIN_ID = 'multigym';
-const DEFAULT_ADMIN_PASS = '500';
+const SESSION_KEY = 'rsgym_session';
+const SESSION_DURATION = 3600000;
 
 let members = [];
 let payments = [];
@@ -17,9 +17,6 @@ let currentPage = 1;
 const PAGE_SIZE = 10;
 let editMemberId = null;
 
-const SESSION_KEY = 'rsgym_session';
-const SESSION_DURATION = 3600000;
-
 async function sessionGet(key) {
   try {
     return await Preferences.get({ key });
@@ -32,10 +29,6 @@ async function sessionRemove(key) {
   try { await Preferences.remove({ key }); } catch { localStorage.removeItem(key); }
 }
 
-function doLogin(id, pass) {
-  return id === DEFAULT_ADMIN_ID && pass === DEFAULT_ADMIN_PASS;
-}
-
 function enterApp() {
   document.getElementById('loginOverlay').classList.add('hidden');
   document.getElementById('appContainer').style.display = 'flex';
@@ -43,6 +36,7 @@ function enterApp() {
 }
 
 async function logout() {
+  API.setToken(null);
   await sessionRemove(SESSION_KEY);
   location.reload();
 }
@@ -50,35 +44,110 @@ async function logout() {
 function scheduleSessionReset() {
   setTimeout(async () => {
     await sessionRemove(SESSION_KEY);
+    API.setToken(null);
     location.reload();
   }, SESSION_DURATION);
 }
 
+// Auto-login with JWT token
 (async () => {
+  const token = API.getToken();
   const { value: session } = await sessionGet(SESSION_KEY);
-  if (session) {
+  if (token && session) {
     const elapsed = Date.now() - Number(session);
     if (elapsed < SESSION_DURATION) {
-      enterApp();
+      try {
+        await API.get('/api/auth/me');
+        enterApp();
+      } catch (e) {
+        API.setToken(null);
+        await sessionRemove(SESSION_KEY);
+      }
     } else {
+      API.setToken(null);
       await sessionRemove(SESSION_KEY);
     }
   }
 })();
+
+// Check if first-time setup is needed
+async function checkSetupStatus() {
+  try {
+    const data = await API.getSetupStatus();
+    if (!data.setupComplete) {
+      showSetupScreen();
+    }
+  } catch (e) {
+    // Fallback: show setup if server is reachable
+  }
+}
+
+function showSetupScreen() {
+  const loginCard = document.querySelector('.login-card');
+  if (!loginCard) return;
+  loginCard.innerHTML = `
+    <div class="login-logo">
+      <div class="login-logo-icon"><i class="fas fa-dumbbell"></i></div>
+      <h2>RS MULTI GYM</h2>
+      <p>( FIRST TIME SETUP )</p>
+    </div>
+    <form id="setupForm" class="login-form">
+      <div class="form-group">
+        <label><i class="fas fa-user"></i> Admin Member ID</label>
+        <input type="text" class="form-input" id="setupMemberId" placeholder="e.g. #IF-001" required>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-id-card"></i> Your Name</label>
+        <input type="text" class="form-input" id="setupName" placeholder="Enter your name" required>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-lock"></i> Set Password</label>
+        <input type="password" class="form-input" id="setupPassword" placeholder="Min 4 characters" required minlength="4">
+      </div>
+      <p class="login-error" id="setupError"></p>
+      <button type="submit" class="btn btn-gold login-btn"><i class="fas fa-check"></i> Setup Admin</button>
+    </form>
+  `;
+  document.getElementById('setupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const memberId = document.getElementById('setupMemberId').value.trim();
+    const name = document.getElementById('setupName').value.trim();
+    const password = document.getElementById('setupPassword').value;
+    const errorEl = document.getElementById('setupError');
+    try {
+      const data = await API.setupAdmin(memberId, name, password);
+      if (data.success) {
+        API.setToken(data.token);
+        await sessionSet(SESSION_KEY, String(Date.now()));
+        enterApp();
+      }
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.add('show');
+    }
+  });
+}
 
 document.getElementById('loginForm').addEventListener('submit', async function (e) {
   e.preventDefault();
   const id = document.getElementById('adminId').value.trim();
   const pass = document.getElementById('adminPass').value.trim();
   const errorEl = document.getElementById('loginError');
-  if (doLogin(id, pass)) {
-    await sessionSet(SESSION_KEY, String(Date.now()));
-    enterApp();
-    errorEl.classList.remove('show');
-  } else {
+  try {
+    const data = await API.login(id, pass);
+    if (data.success && data.token) {
+      API.setToken(data.token);
+      await sessionSet(SESSION_KEY, String(Date.now()));
+      enterApp();
+      errorEl.classList.remove('show');
+    }
+  } catch (err) {
+    errorEl.textContent = err.message || 'Invalid credentials. Try again.';
     errorEl.classList.add('show');
   }
 });
+
+setTimeout(checkSetupStatus, 3000);
 
 // ===== BACKEND STATUS =====
 let waQRDataURL = null;
@@ -215,6 +284,9 @@ function showServerBanner() {
 
   if (window.location.hash === '#renew-members') {
     renderRenewalHistory();
+  }
+  if (window.location.hash === '#attendance') {
+    loadAttendanceData();
   }
 })();
 
@@ -1324,10 +1396,17 @@ document.querySelector('.nav-item[href="#renew-members"]')?.addEventListener('cl
   setTimeout(renderRenewalHistory, 50);
 });
 
+document.querySelector('.nav-item[href="#attendance"]')?.addEventListener('click', function (e) {
+  setTimeout(loadAttendanceData, 50);
+});
+
 // Also handle hashchange for Renew Members
 window.addEventListener('hashchange', function () {
   if (window.location.hash === '#renew-members') {
     renderRenewalHistory();
+  }
+  if (window.location.hash === '#attendance') {
+    loadAttendanceData();
   }
 });
 
@@ -1869,3 +1948,313 @@ window.renewMember = renewMember;
 window.editMember = editMember;
 window.viewFullDetails = viewFullDetails;
 window.deleteMember = deleteMember;
+window.loadAttendanceData = loadAttendanceData;
+window.handleFingerprintScan = handleFingerprintScan;
+window.showEnrollModal = showEnrollModal;
+window.showManualCheckinModal = showManualCheckinModal;
+
+// ===== ATTENDANCE SYSTEM =====
+let attendanceRecords = [];
+let absentMembers = [];
+
+async function loadAttendanceData() {
+  try {
+    const [todayData, absentData, statsData] = await Promise.all([
+      API.get('/api/attendance/today'),
+      API.get('/api/attendance/absent'),
+      API.get('/api/attendance/stats')
+    ]);
+    attendanceRecords = todayData;
+    absentMembers = absentData;
+    renderAttendanceTable();
+    renderAbsentTable();
+    updateAttendanceStats(statsData);
+  } catch (e) {
+    console.error('Failed to load attendance:', e);
+  }
+}
+
+function renderAttendanceTable() {
+  const tbody = document.getElementById('attendanceTableBody');
+  if (!tbody) return;
+  if (attendanceRecords.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><i class="fas fa-fingerprint" style="font-size:2rem;color:var(--text-muted);margin-bottom:8px;display:block;"></i>No attendance records today<br><small>Scan a fingerprint to mark attendance</small></td></tr>';
+    return;
+  }
+  tbody.innerHTML = attendanceRecords.map(r => `
+    <tr>
+      <td><strong>${r.memberName}</strong><br><small style="color:var(--text-muted);">${r.memberId}</small></td>
+      <td>${r.checkInTime}</td>
+      <td><span class="method-badge ${r.method}">${getMethodLabel(r.method)}</span></td>
+      <td><span class="status-badge active">Present</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderAbsentTable() {
+  const tbody = document.getElementById('absentTableBody');
+  if (!tbody) return;
+  if (absentMembers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><i class="fas fa-check-circle" style="font-size:2rem;color:#4ade80;margin-bottom:8px;display:block;"></i>All members present!</td></tr>';
+    return;
+  }
+  tbody.innerHTML = absentMembers.map(m => `
+    <tr>
+      <td><strong>${m.name}</strong><br><small style="color:var(--text-muted);">${m.memberId}</small></td>
+      <td>${m.plan || 'N/A'}</td>
+      <td>${m.timing || 'N/A'}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="manualCheckIn('${m.memberId}')"><i class="fas fa-check"></i> Check In</button></td>
+    </tr>
+  `).join('');
+}
+
+function updateAttendanceStats(stats) {
+  const enrolledEl = document.getElementById('enrolledCount');
+  const todayEl = document.getElementById('todayCount');
+  const badgeEl = document.getElementById('todayBadge');
+  const absentBadge = document.getElementById('absentBadge');
+  if (enrolledEl) enrolledEl.textContent = stats.totalActive || 0;
+  if (todayEl) todayEl.textContent = stats.uniqueMembers || 0;
+  if (badgeEl) badgeEl.textContent = stats.uniqueMembers || 0;
+  if (absentBadge) absentBadge.textContent = stats.absent || 0;
+}
+
+function getMethodLabel(method) {
+  const labels = { webauthn: 'Fingerprint', manual: 'Manual', demo: 'Demo', fingerprint: 'Device' };
+  return labels[method] || method;
+}
+
+async function handleFingerprintScan() {
+  const overlay = showScanOverlay();
+  try {
+    if (window.PublicKeyCredential) {
+      const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (available) {
+        try {
+          const cred = await navigator.credentials.create({
+            publicKey: {
+              challenge: crypto.getRandomValues(new Uint8Array(32)),
+              rp: { name: 'RS MULTI GYM' },
+              user: {
+                id: new Uint8Array(16),
+                name: 'demo-user',
+                displayName: 'Demo User'
+              },
+              pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+              authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+              timeout: 10000,
+              attestation: 'none'
+            }
+          });
+          hideScanOverlay(overlay);
+          await performDemoScan();
+          return;
+        } catch (e) {
+          hideScanOverlay(overlay);
+          await performDemoScan();
+          return;
+        }
+      }
+    }
+    hideScanOverlay(overlay);
+    await performDemoScan();
+  } catch (e) {
+    hideScanOverlay(overlay);
+    showToast('Scan failed: ' + e.message, 'error');
+  }
+}
+
+async function performDemoScan() {
+  try {
+    showToast('Scanning fingerprint...', 'info');
+    const result = await API.post('/api/webauthn/demo-scan', {});
+    if (result.success) {
+      if (result.alreadyCheckedIn) {
+        showToast(`${result.member.name} already checked in at ${result.checkInTime}`, 'warning');
+      } else {
+        showToast(`Welcome ${result.member.name}! Attendance marked at ${result.checkInTime}`, 'success');
+      }
+      loadAttendanceData();
+    } else {
+      showToast(result.error || 'Scan failed', 'error');
+    }
+  } catch (e) {
+    showToast(e.message || 'Demo scan failed. Enroll a member first!', 'error');
+  }
+}
+
+function showScanOverlay() {
+  const overlay = document.createElement('div');
+  overlay.className = 'scan-overlay';
+  overlay.innerHTML = `
+    <div class="scan-modal">
+      <div class="fingerprint-animation">
+        <i class="fas fa-fingerprint"></i>
+      </div>
+      <h3>Place your finger on the sensor</h3>
+      <p>Scanning...</p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function hideScanOverlay(overlay) {
+  if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+}
+
+async function showEnrollModal() {
+  if (members.length === 0) {
+    showToast('No members found. Add members first!', 'error');
+    return;
+  }
+  const enrolledMembers = members.filter(m => m.status === 'Active');
+  const memberOptions = enrolledMembers.map(m => `<option value="${m.memberId}">${m.name} (${m.memberId})</option>`).join('');
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fas fa-fingerprint gold"></i> Enroll Fingerprint</h3>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Select Member</label>
+          <select class="form-input" id="enrollMemberSelect">
+            <option value="">-- Choose member --</option>
+            ${memberOptions}
+          </select>
+        </div>
+        <div id="enrollStatus" style="text-align:center;padding:16px;display:none;">
+          <div class="fingerprint-animation small">
+            <i class="fas fa-fingerprint"></i>
+          </div>
+          <p id="enrollStatusText">Place finger on sensor...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+        <button class="btn btn-gold" onclick="performEnrollment()"><i class="fas fa-fingerprint"></i> Enroll Now</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function performEnrollment() {
+  const select = document.getElementById('enrollMemberSelect');
+  const statusDiv = document.getElementById('enrollStatus');
+  const statusText = document.getElementById('enrollStatusText');
+  if (!select || !select.value) {
+    showToast('Please select a member', 'error');
+    return;
+  }
+  const memberId = select.value;
+  statusDiv.style.display = 'block';
+  statusText.textContent = 'Starting enrollment...';
+
+  try {
+    const startResult = await API.post('/api/webauthn/register/start', { memberId });
+    if (!startResult.options) throw new Error('Failed to start registration');
+
+    statusText.textContent = 'Place your finger on the sensor...';
+
+    let credential;
+    try {
+      const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (available) {
+        credential = await navigator.credentials.create({ publicKey: startResult.options });
+      }
+    } catch (e) {
+      statusText.textContent = 'Using demo enrollment...';
+      credential = { id: 'demo-' + Date.now(), type: 'public-key', response: { attestationObject: 'demo', transports: ['internal'] } };
+    }
+
+    if (!credential) {
+      credential = { id: 'demo-' + Date.now(), type: 'public-key', response: { attestationObject: 'demo', transports: ['internal'] } };
+    }
+
+    statusText.textContent = 'Verifying...';
+    const finishResult = await API.post('/api/webauthn/register/finish', { memberId, credential });
+
+    if (finishResult.success) {
+      statusText.textContent = 'Enrollment successful!';
+      statusText.style.color = '#4ade80';
+      showToast('Fingerprint enrolled successfully!', 'success');
+      loadAttendanceData();
+      setTimeout(() => { const overlay = select.closest('.modal-overlay'); if (overlay) overlay.remove(); }, 1500);
+    } else {
+      throw new Error(finishResult.error || 'Enrollment failed');
+    }
+  } catch (e) {
+    statusText.textContent = 'Enrollment failed: ' + e.message;
+    statusText.style.color = '#ef4444';
+    showToast('Enrollment failed: ' + e.message, 'error');
+  }
+}
+
+async function showManualCheckinModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fas fa-keyboard gold"></i> Manual Check-in</h3>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Member ID</label>
+          <input type="text" class="form-input" id="manualCheckinId" placeholder="e.g. #IF-001">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+        <button class="btn btn-gold" onclick="performManualCheckin()"><i class="fas fa-check"></i> Check In</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function performManualCheckin() {
+  const input = document.getElementById('manualCheckinId');
+  if (!input || !input.value.trim()) {
+    showToast('Please enter a member ID', 'error');
+    return;
+  }
+  try {
+    const result = await API.post('/api/attendance/check-in', { memberId: input.value.trim(), method: 'manual' });
+    if (result.success) {
+      if (result.alreadyCheckedIn) {
+        showToast(result.message, 'warning');
+      } else {
+        showToast(`${result.member.name} checked in successfully!`, 'success');
+      }
+      loadAttendanceData();
+      input.closest('.modal-overlay').remove();
+    } else {
+      showToast(result.error || 'Check-in failed', 'error');
+    }
+  } catch (e) {
+    showToast(e.message || 'Check-in failed', 'error');
+  }
+}
+
+async function manualCheckIn(memberId) {
+  try {
+    const result = await API.post('/api/attendance/check-in', { memberId, method: 'manual' });
+    if (result.success) {
+      if (result.alreadyCheckedIn) {
+        showToast(result.message, 'warning');
+      } else {
+        showToast(`${result.member.name} checked in successfully!`, 'success');
+      }
+      loadAttendanceData();
+    }
+  } catch (e) {
+    showToast(e.message || 'Check-in failed', 'error');
+  }
+}

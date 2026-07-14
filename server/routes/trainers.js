@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Trainer = require('../models/Trainer');
+const { authenticateToken } = require('../middleware/auth');
 
 router.get('/trainers', async (req, res) => {
   try {
@@ -11,7 +12,7 @@ router.get('/trainers', async (req, res) => {
   }
 });
 
-router.post('/trainers', async (req, res) => {
+router.post('/trainers', authenticateToken, async (req, res) => {
   try {
     const trainer = new Trainer(req.body);
     await trainer.save();
@@ -21,7 +22,7 @@ router.post('/trainers', async (req, res) => {
   }
 });
 
-router.delete('/trainers/:id', async (req, res) => {
+router.delete('/trainers/:id', authenticateToken, async (req, res) => {
   try {
     const result = await Trainer.deleteOne({ _id: req.params.id });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Trainer not found' });

@@ -14,3 +14,5 @@ server/ngrok.exe
 server/wa_auth_info/
 *.log
 .DS_Store
+cookies.txt
+server/backups/

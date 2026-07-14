@@ -2,8 +2,8 @@ import { Preferences } from '@capacitor/preferences';
 import './backbutton.js';
 
 // ===== ADMIN LOGIN =====
-const SESSION_KEY = 'rsgym_session';
-const SESSION_DURATION = 3600000;
+const DEFAULT_ADMIN_ID = 'multigym';
+const DEFAULT_ADMIN_PASS = '500';
 
 let members = [];
 let payments = [];
@@ -17,6 +17,9 @@ let currentPage = 1;
 const PAGE_SIZE = 10;
 let editMemberId = null;
 
+const SESSION_KEY = 'rsgym_session';
+const SESSION_DURATION = 3600000;
+
 async function sessionGet(key) {
   try {
     return await Preferences.get({ key });
@@ -29,6 +32,10 @@ async function sessionRemove(key) {
   try { await Preferences.remove({ key }); } catch { localStorage.removeItem(key); }
 }
 
+function doLogin(id, pass) {
+  return id === DEFAULT_ADMIN_ID && pass === DEFAULT_ADMIN_PASS;
+}
+
 function enterApp() {
   document.getElementById('loginOverlay').classList.add('hidden');
   document.getElementById('appContainer').style.display = 'flex';
@@ -36,7 +43,6 @@ function enterApp() {
 }
 
 async function logout() {
-  API.setToken(null);
   await sessionRemove(SESSION_KEY);
   location.reload();
 }
@@ -44,110 +50,35 @@ async function logout() {
 function scheduleSessionReset() {
   setTimeout(async () => {
     await sessionRemove(SESSION_KEY);
-    API.setToken(null);
     location.reload();
   }, SESSION_DURATION);
 }
 
-// Auto-login with JWT token
 (async () => {
-  const token = API.getToken();
   const { value: session } = await sessionGet(SESSION_KEY);
-  if (token && session) {
+  if (session) {
     const elapsed = Date.now() - Number(session);
     if (elapsed < SESSION_DURATION) {
-      try {
-        await API.get('/api/auth/me');
-        enterApp();
-      } catch (e) {
-        API.setToken(null);
-        await sessionRemove(SESSION_KEY);
-      }
+      enterApp();
     } else {
-      API.setToken(null);
       await sessionRemove(SESSION_KEY);
     }
   }
 })();
-
-// Check if first-time setup is needed
-async function checkSetupStatus() {
-  try {
-    const data = await API.getSetupStatus();
-    if (!data.setupComplete) {
-      showSetupScreen();
-    }
-  } catch (e) {
-    // Fallback: show setup if server is reachable
-  }
-}
-
-function showSetupScreen() {
-  const loginCard = document.querySelector('.login-card');
-  if (!loginCard) return;
-  loginCard.innerHTML = `
-    <div class="login-logo">
-      <div class="login-logo-icon"><i class="fas fa-dumbbell"></i></div>
-      <h2>RS MULTI GYM</h2>
-      <p>( FIRST TIME SETUP )</p>
-    </div>
-    <form id="setupForm" class="login-form">
-      <div class="form-group">
-        <label><i class="fas fa-user"></i> Admin Member ID</label>
-        <input type="text" class="form-input" id="setupMemberId" placeholder="e.g. #IF-001" required>
-      </div>
-      <div class="form-group">
-        <label><i class="fas fa-id-card"></i> Your Name</label>
-        <input type="text" class="form-input" id="setupName" placeholder="Enter your name" required>
-      </div>
-      <div class="form-group">
-        <label><i class="fas fa-lock"></i> Set Password</label>
-        <input type="password" class="form-input" id="setupPassword" placeholder="Min 4 characters" required minlength="4">
-      </div>
-      <p class="login-error" id="setupError"></p>
-      <button type="submit" class="btn btn-gold login-btn"><i class="fas fa-check"></i> Setup Admin</button>
-    </form>
-  `;
-  document.getElementById('setupForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const memberId = document.getElementById('setupMemberId').value.trim();
-    const name = document.getElementById('setupName').value.trim();
-    const password = document.getElementById('setupPassword').value;
-    const errorEl = document.getElementById('setupError');
-    try {
-      const data = await API.setupAdmin(memberId, name, password);
-      if (data.success) {
-        API.setToken(data.token);
-        await sessionSet(SESSION_KEY, String(Date.now()));
-        enterApp();
-      }
-    } catch (err) {
-      errorEl.textContent = err.message;
-      errorEl.classList.add('show');
-    }
-  });
-}
 
 document.getElementById('loginForm').addEventListener('submit', async function (e) {
   e.preventDefault();
   const id = document.getElementById('adminId').value.trim();
   const pass = document.getElementById('adminPass').value.trim();
   const errorEl = document.getElementById('loginError');
-  try {
-    const data = await API.login(id, pass);
-    if (data.success && data.token) {
-      API.setToken(data.token);
-      await sessionSet(SESSION_KEY, String(Date.now()));
-      enterApp();
-      errorEl.classList.remove('show');
-    }
-  } catch (err) {
-    errorEl.textContent = err.message || 'Invalid credentials. Try again.';
+  if (doLogin(id, pass)) {
+    await sessionSet(SESSION_KEY, String(Date.now()));
+    enterApp();
+    errorEl.classList.remove('show');
+  } else {
     errorEl.classList.add('show');
   }
 });
-
-setTimeout(checkSetupStatus, 3000);
 
 // ===== BACKEND STATUS =====
 let waQRDataURL = null;

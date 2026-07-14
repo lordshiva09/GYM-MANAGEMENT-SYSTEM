@@ -4,21 +4,17 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, makeInMemoryStore, DisconnectReason } = require('@whiskeysockets/baileys');
 const QR = require('qrcode');
 
 const Member = require('./models/Member');
 const Payment = require('./models/Payment');
 const Settings = require('./models/Settings');
-const { authenticateToken, optionalAuth } = require('./middleware/auth');
 
 const memberRoutes = require('./routes/members');
 const paymentRoutes = require('./routes/payments');
 const settingsRoutes = require('./routes/settings');
 const trainerRoutes = require('./routes/trainers');
-const authRoutes = require('./routes/auth');
 const backupRoutes = require('./routes/backup');
 const attendanceRoutes = require('./routes/attendance');
 const webauthnRoutes = require('./routes/webauthn');
@@ -196,29 +192,6 @@ async function seedMembersFromFile() {
 // ===== EXPRESS SERVER =====
 const app = express();
 
-// Security headers
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
-}));
-
-// Rate limiting
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { error: 'Too many login attempts. Try again in 15 minutes.' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  message: { error: 'Too many requests. Please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
@@ -237,15 +210,14 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 
-// API routes (with rate limiting)
-app.use('/api/auth', loginLimiter, authRoutes);
-app.use('/api/backup', apiLimiter, backupRoutes);
-app.use('/api', apiLimiter, attendanceRoutes);
-app.use('/api', apiLimiter, webauthnRoutes);
-app.use('/api', apiLimiter, memberRoutes);
-app.use('/api', apiLimiter, paymentRoutes);
-app.use('/api', apiLimiter, settingsRoutes);
-app.use('/api', apiLimiter, trainerRoutes);
+// API routes
+app.use('/api/backup', backupRoutes);
+app.use('/api', attendanceRoutes);
+app.use('/api', webauthnRoutes);
+app.use('/api', memberRoutes);
+app.use('/api', paymentRoutes);
+app.use('/api', settingsRoutes);
+app.use('/api', trainerRoutes);
 
 // WA status endpoint
 app.get('/api/status', (req, res) => {
@@ -272,8 +244,8 @@ app.get('/api/qr', (req, res) => {
   res.json({ qr: waQR, waReady, qrDataURL: waQRDataURL });
 });
 
-// Send WhatsApp manually (protected)
-app.post('/api/send-now', authenticateToken, async (req, res) => {
+// Send WhatsApp manually
+app.post('/api/send-now', async (req, res) => {
   const { memberId, customMessage } = req.body;
   let member;
   try {
@@ -393,9 +365,8 @@ async function start() {
   }
 
   const server = app.listen(PORT, () => {
-    console.log(`[+] Server running on http://localhost:${PORT}`);
-    console.log(`[+] Open http://localhost:${PORT} in your browser`);
-    console.log('[+] Security features: Helmet, Rate Limiting, JWT Auth, Atomic Writes');
+    console.log('[+] Server running on http://localhost:' + PORT);
+    console.log('[+] Open http://localhost:' + PORT + ' in your browser');
   });
 
   // ===== PROCESS ERROR HANDLERS =====

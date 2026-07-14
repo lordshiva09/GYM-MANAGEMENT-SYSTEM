@@ -8,7 +8,6 @@ const {
 } = require('@simplewebauthn/server');
 const Member = require('../models/Member');
 const Attendance = require('../models/Attendance');
-const { authenticateToken } = require('../middleware/auth');
 
 const RP_NAME = 'RS MULTI GYM';
 const RP_ID = 'localhost';
@@ -24,7 +23,7 @@ function formatTime(date) {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-router.post('/webauthn/register/start', authenticateToken, async (req, res) => {
+router.post('/webauthn/register/start', async (req, res) => {
   const { memberId } = req.body;
   if (!memberId) return res.status(400).json({ error: 'Member ID required' });
 
@@ -66,7 +65,7 @@ router.post('/webauthn/register/start', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/webauthn/register/finish', authenticateToken, async (req, res) => {
+router.post('/webauthn/register/finish', async (req, res) => {
   const { memberId, credential } = req.body;
   if (!memberId || !credential) return res.status(400).json({ error: 'Member ID and credential required' });
 

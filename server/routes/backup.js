@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { performBackup, restoreBackup, getBackupStatus, cleanupOldBackups } = require('../services/backupService');
 const BackupLog = require('../models/BackupLog');
 
-router.get('/status', authenticateToken, async (req, res) => {
+router.get('/status', async (req, res) => {
   try {
     const status = await getBackupStatus();
     res.json(status);
@@ -13,7 +12,7 @@ router.get('/status', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/history', authenticateToken, async (req, res) => {
+router.get('/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 30;
     const backups = await BackupLog.find()
@@ -26,7 +25,7 @@ router.get('/history', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/trigger', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/trigger', async (req, res) => {
   try {
     const type = req.body.type || 'manual';
     const result = await performBackup(type);
@@ -36,7 +35,7 @@ router.post('/trigger', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/restore/:backupId', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/restore/:backupId', async (req, res) => {
   try {
     const result = await restoreBackup(req.params.backupId);
     res.json(result);
@@ -45,7 +44,7 @@ router.post('/restore/:backupId', authenticateToken, requireAdmin, async (req, r
   }
 });
 
-router.post('/cleanup', authenticateToken, requireAdmin, async (req, res) => {
+router.post('/cleanup', async (req, res) => {
   try {
     const keepDays = req.body.keepDays || 7;
     const deleted = await cleanupOldBackups(keepDays);

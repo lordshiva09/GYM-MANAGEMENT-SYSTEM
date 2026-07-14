@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Member = require('../models/Member');
 const Payment = require('../models/Payment');
-const { authenticateToken } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
 function parseDate(dateStr) {
@@ -36,7 +35,7 @@ function computeStatus(expiryDateStr) {
   return 'Active';
 }
 
-router.get('/members', authenticateToken, async (req, res) => {
+router.get('/members', async (req, res) => {
   try {
     const members = await Member.find().sort({ createdAt: -1 });
     const bulkOps = [];
@@ -58,7 +57,7 @@ router.get('/members', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/members', authenticateToken, [
+router.post('/members', [
   body('memberId').trim().notEmpty().withMessage('Member ID required'),
   body('name').trim().notEmpty().withMessage('Name required'),
   body('mobile').trim().notEmpty().withMessage('Mobile required')
@@ -76,7 +75,7 @@ router.post('/members', authenticateToken, [
   }
 });
 
-router.put('/members/:memberId', authenticateToken, async (req, res) => {
+router.put('/members/:memberId', async (req, res) => {
   try {
     const member = await Member.findOneAndUpdate(
       { memberId: req.params.memberId },
@@ -91,7 +90,7 @@ router.put('/members/:memberId', authenticateToken, async (req, res) => {
   }
 });
 
-router.delete('/members/:memberId', authenticateToken, async (req, res) => {
+router.delete('/members/:memberId', async (req, res) => {
   try {
     const member = await Member.findOne({ memberId: req.params.memberId });
     if (!member) return res.status(404).json({ error: 'Member not found' });

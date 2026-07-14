@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Attendance = require('../models/Attendance');
 const Member = require('../models/Member');
-const { authenticateToken, optionalAuth } = require('../middleware/auth');
 
 function formatDate(date) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -12,7 +11,7 @@ function formatTime(date) {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-router.get('/attendance', authenticateToken, async (req, res) => {
+router.get('/attendance', async (req, res) => {
   try {
     const { date, memberId, limit } = req.query;
     const query = {};
@@ -25,7 +24,7 @@ router.get('/attendance', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/attendance/today', authenticateToken, async (req, res) => {
+router.get('/attendance/today', async (req, res) => {
   try {
     const today = formatDate(new Date());
     const records = await Attendance.find({ date: today }).sort({ timestamp: -1 });
@@ -35,7 +34,7 @@ router.get('/attendance/today', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/attendance/member/:memberId', authenticateToken, async (req, res) => {
+router.get('/attendance/member/:memberId', async (req, res) => {
   try {
     const records = await Attendance.find({ memberId: req.params.memberId }).sort({ timestamp: -1 }).limit(30);
     res.json(records);
@@ -44,7 +43,7 @@ router.get('/attendance/member/:memberId', authenticateToken, async (req, res) =
   }
 });
 
-router.get('/attendance/stats', authenticateToken, async (req, res) => {
+router.get('/attendance/stats', async (req, res) => {
   try {
     const today = formatDate(new Date());
     const todayRecords = await Attendance.find({ date: today });
@@ -62,7 +61,7 @@ router.get('/attendance/stats', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/attendance/absent', authenticateToken, async (req, res) => {
+router.get('/attendance/absent', async (req, res) => {
   try {
     const today = formatDate(new Date());
     const todayRecords = await Attendance.find({ date: today });
@@ -77,7 +76,7 @@ router.get('/attendance/absent', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/attendance/monthly/:year/:month', authenticateToken, async (req, res) => {
+router.get('/attendance/monthly/:year/:month', async (req, res) => {
   try {
     const { year, month } = req.params;
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -111,7 +110,7 @@ router.get('/attendance/monthly/:year/:month', authenticateToken, async (req, re
   }
 });
 
-router.post('/attendance/check-in', optionalAuth, async (req, res) => {
+router.post('/attendance/check-in', async (req, res) => {
   const { memberId, method } = req.body;
   if (!memberId) return res.status(400).json({ error: 'Member ID required' });
 
@@ -142,7 +141,7 @@ router.post('/attendance/check-in', optionalAuth, async (req, res) => {
   }
 });
 
-router.delete('/attendance/:id', authenticateToken, async (req, res) => {
+router.delete('/attendance/:id', async (req, res) => {
   try {
     const result = await Attendance.findByIdAndDelete(req.params.id);
     if (!result) return res.status(404).json({ error: 'Record not found' });

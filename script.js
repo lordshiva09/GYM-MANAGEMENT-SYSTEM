@@ -1884,6 +1884,13 @@ window.handleFingerprintScan = handleFingerprintScan;
 window.showEnrollModal = showEnrollModal;
 window.showManualCheckinModal = showManualCheckinModal;
 
+document.getElementById('actionScan')?.addEventListener('click', handleFingerprintScan);
+document.getElementById('actionEnroll')?.addEventListener('click', showEnrollModal);
+document.getElementById('actionManual')?.addEventListener('click', showManualCheckinModal);
+window.performEnrollment = performEnrollment;
+window.performManualCheckin = performManualCheckin;
+window.manualCheckIn = manualCheckIn;
+
 // ===== ATTENDANCE SYSTEM =====
 let attendanceRecords = [];
 let absentMembers = [];
